@@ -537,7 +537,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             }
             try {
                 const stats = await fetchWithCache(`${API_BASE}/stats/nfl/player/${playerId}?season_type=regular&season=${season}&grouping=week`);
-                return stats;
+                if (Array.isArray(stats)) {
+                    return stats;
+                }
+                return []; // Return empty array if stats is not an array
             } catch (error) {
                 console.error(`Failed to fetch game logs for player ${playerId}:`, error);
                 return [];
