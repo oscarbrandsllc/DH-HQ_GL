@@ -2320,7 +2320,7 @@ font-weight: 500 !important;
 }
 
 #modal-header {
-  text-align: left;
+  text-align: center;
 }
 
 #modal-player-name {
@@ -2330,9 +2330,9 @@ font-weight: 500 !important;
 
 #modal-summary-chips {
   display: flex;
-  justify-content: flex-start;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
   flex-wrap: wrap;
 }
 
@@ -2340,32 +2340,35 @@ font-weight: 500 !important;
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid var(--color-panel-border);
   border-radius: var(--card-border-radius);
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  min-width: 140px;
+  padding: 0.25rem 0.5rem;
+  text-align: center;
+  min-width: auto;
 }
 
 .summary-chip h4 {
-  font-size: 0.8rem;
+  font-size: 0.7rem;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: 0.25rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.1rem;
   text-transform: uppercase;
   border-bottom: 1px solid var(--color-panel-border);
-  padding-bottom: 0.25rem;
+  padding-bottom: 0.1rem;
 }
 
-.summary-chip div {
+.chip-values {
     display: flex;
-    justify-content: space-between;
-    font-size: 0.75rem;
-    color: var(--color-text-secondary);
-    padding-top: 0.25rem;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--color-text-primary);
+    font-weight: 700;
 }
 
-.summary-chip span {
-    font-weight: 700;
-    color: var(--color-text-primary);
+.chip-separator {
+    color: var(--color-text-tertiary);
+    font-size: 0.8rem;
+    font-weight: 400;
 }
 
 #modal-body th:first-child, #modal-body td:first-child {

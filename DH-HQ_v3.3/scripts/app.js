@@ -801,19 +801,28 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
             summaryChipsContainer.innerHTML = `
                 <div class="summary-chip">
-                    <h4>Points</h4>
-                    <div><span>Total:</span><span>${playerRanks.total_pts}</span></div>
-                    <div><span>Per Game:</span><span>${playerRanks.ppg}</span></div>
+                    <h4>FPTS / PPG</h4>
+                    <div class="chip-values">
+                        <span>${playerRanks.total_pts}</span>
+                        <span class="chip-separator">/</span>
+                        <span>${playerRanks.ppg}</span>
+                    </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>Overall Rank</h4>
-                    <div><span>Total:</span><span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span></div>
-                    <div><span>Per Game:</span><span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span></div>
+                    <h4>OVR RANK</h4>
+                    <div class="chip-values">
+                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span>
+                        <span class="chip-separator">/</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span>
+                    </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>Positional Rank</h4>
-                    <div><span>Total:</span><span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span></div>
-                    <div><span>Per Game:</span><span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span></div>
+                    <h4>POS RANK</h4>
+                    <div class="chip-values">
+                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
+                        <span class="chip-separator">/</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
+                    </div>
                 </div>
             `;
 
