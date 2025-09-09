@@ -26,6 +26,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const tradeSimulator = document.getElementById('tradeSimulator');
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
+        const gameLogsModal = document.getElementById('gameLogsModal');
+        const gameLogsTitle = document.getElementById('gameLogsTitle');
+        const gameLogsBody = document.getElementById('gameLogsBody');
+        const gameLogsClose = document.getElementById('gameLogsClose');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -164,6 +168,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 if (e && e.target && e.target.blur) e.target.blur();
             });
             rosterGrid?.addEventListener('click', handleTeamSelect);
+            rosterGrid?.addEventListener('click', handlePlayerNameClick);
             mainContent?.addEventListener('click', handleAssetClickForTrade);
             compareButton?.addEventListener('click', handleCompareClick);
             clearCompareButton?.addEventListener('click', () => handleClearCompare(true));
@@ -171,6 +176,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             depthChartViewBtn?.addEventListener('click', () => setRosterView('depth'));
             positionalFiltersContainer?.addEventListener('click', handlePositionFilter);
             clearFiltersButton?.addEventListener('click', handleClearFilters);
+            gameLogsClose?.addEventListener('click', closeGameLogsModal);
+            gameLogsModal?.addEventListener('click', (e) => { if (e.target === gameLogsModal) closeGameLogsModal(); });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGameLogsModal(); });
         }
         
         // --- Initialization ---
@@ -492,6 +500,57 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 const pos = btn.dataset.position;
                 btn.classList.toggle('active', state.activePositions.has(pos));
             });
+        }
+
+        // --- Game Logs Modal ---
+        function handlePlayerNameClick(e) {
+            if (!e.target.classList.contains('player-name')) return;
+            const row = e.target.closest('.player-row');
+            if (!row) return;
+            e.stopPropagation();
+            const playerId = row.dataset.assetId;
+            const name = e.target.textContent.trim();
+            if (!playerId) return;
+            openGameLogsModal(playerId, name);
+        }
+
+        function closeGameLogsModal() {
+            if (!gameLogsModal) return;
+            gameLogsModal.classList.remove('show');
+            setTimeout(() => gameLogsModal.classList.add('hidden'), 200);
+        }
+
+        async function openGameLogsModal(playerId, name) {
+            if (!gameLogsModal || !gameLogsBody || !gameLogsTitle) return;
+            gameLogsTitle.textContent = `${name} - Game Logs`;
+            gameLogsBody.innerHTML = '<div class="text-sm">Loading...</div>';
+            gameLogsModal.classList.remove('hidden');
+            requestAnimationFrame(() => gameLogsModal.classList.add('show'));
+
+            const now = new Date();
+            const season = now.getMonth() >= 8 ? now.getFullYear() : now.getFullYear() - 1;
+            const url = `https://api.sleeper.com/stats/nfl/player/${playerId}?season_type=regular&season=${season}`;
+
+            try {
+                const data = await fetchWithCache(url);
+                const weeks = data?.stats || {};
+                if (!weeks || Object.keys(weeks).length === 0) {
+                    gameLogsBody.innerHTML = '<div class="text-sm text-slate-400">No data available.</div>';
+                    return;
+                }
+                let html = '<table><thead><tr><th>Week</th><th>Pts</th></tr></thead><tbody>';
+                Object.keys(weeks).sort((a,b)=>parseInt(a)-parseInt(b)).forEach(week => {
+                    const w = weeks[week];
+                    const pts = w.pts_ppr ?? w.pts_half_ppr ?? w.pts_std ?? 0;
+                    const display = typeof pts === 'number' ? pts.toFixed(2) : pts;
+                    html += `<tr><td>${week}</td><td>${display}</td></tr>`;
+                });
+                html += '</tbody></table>';
+                gameLogsBody.innerHTML = html;
+            } catch (err) {
+                console.error('Game log fetch failed', err);
+                gameLogsBody.innerHTML = '<div class="text-sm text-red-400">Failed to load logs.</div>';
+            }
         }
 
 
