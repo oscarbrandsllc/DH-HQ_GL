@@ -561,6 +561,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         function calculatePlayerStatsAndRanks(playerId) {
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return null;
+            const scoringSettings = league.scoring_settings;
+
             const allPlayers = {};
 
             // Aggregate stats for all players
@@ -574,7 +578,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                             pos: state.players[pId]?.position || 'N/A'
                         };
                     }
-                    allPlayers[pId].total_pts += weeklyData[pId].pts_ppr || 0;
+                    allPlayers[pId].total_pts += calculateFantasyPoints(weeklyData[pId], scoringSettings);
                     allPlayers[pId].games_played += 1;
                 }
             }
@@ -794,6 +798,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         function renderGameLogs(gameLogs, player, playerRanks) {
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return;
+            const scoringSettings = league.scoring_settings;
+
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
@@ -832,7 +840,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             }
 
             const relevantStats = {
-                'pts_ppr': 'PPR Pts',
+                'fpts': 'FPTS',
                 'rec': 'Rec',
                 'rec_yd': 'Rec Yds',
                 'rec_td': 'Rec TD',
@@ -867,7 +875,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
 
                     let value;
-                    if (key === 'ypc') {
+                    if (key === 'fpts') {
+                        value = calculateFantasyPoints(weekStats.stats, scoringSettings);
+                    } else if (key === 'ypc') {
                         const rushYds = weekStats.stats['rush_yd'] || 0;
                         const rushAtt = weekStats.stats['rush_att'] || 0;
                         value = rushAtt > 0 ? (rushYds / rushAtt) : 0;
@@ -1414,6 +1424,18 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             };
             return colors[position] || 'var(--color-text-secondary)';
         }
+        function calculateFantasyPoints(stats, scoringSettings) {
+            let totalPoints = 0;
+            if (!stats || !scoringSettings) return 0;
+
+            for (const statKey in stats) {
+                if (scoringSettings[statKey]) {
+                    totalPoints += stats[statKey] * scoringSettings[statKey];
+                }
+            }
+            return totalPoints;
+        }
+
         function getRankColor(rank, isPositional = false) {
             if (typeof rank !== 'number') return 'var(--color-text-primary)';
             const thresholds = isPositional

@@ -2289,6 +2289,7 @@ font-weight: 500 !important;
 
 #modal-body {
   color: var(--color-text-secondary);
+  overflow-x: auto;
 }
 
 #modal-body table {
