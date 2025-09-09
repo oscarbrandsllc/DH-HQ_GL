@@ -113,7 +113,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         });
 
         // --- State ---
-        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false };
+        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false, weeklyStats: {} };
         const assignedLeagueColors = new Map();
         let nextColorIndex = 0;
         const assignedRyColors = new Map();
@@ -536,14 +536,17 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 return [];
             }
 
+            state.weeklyStats = {}; // Clear previous weekly stats
             const allWeeklyStats = [];
+
             for (let week = 1; week <= 18; week++) {
                 try {
                     const weeklyStats = await fetchWithCache(`${API_BASE}/stats/nfl/regular/${season}/${week}`);
                     if (Object.keys(weeklyStats).length === 0) {
-                        // No more stats for the season, break the loop
                         break;
                     }
+                    state.weeklyStats[week] = weeklyStats; // Store for rank calculation
+
                     if (weeklyStats[playerId]) {
                         allWeeklyStats.push({
                             week: week,
@@ -551,11 +554,71 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                         });
                     }
                 } catch (error) {
-                    // Stop fetching if a week fails, as subsequent weeks are unlikely to be available
                     break;
                 }
             }
             return allWeeklyStats;
+        }
+
+        function calculatePlayerStatsAndRanks(playerId) {
+            const allPlayers = {};
+
+            // Aggregate stats for all players
+            for (const week in state.weeklyStats) {
+                const weeklyData = state.weeklyStats[week];
+                for (const pId in weeklyData) {
+                    if (!allPlayers[pId]) {
+                        allPlayers[pId] = {
+                            total_pts: 0,
+                            games_played: 0,
+                            pos: state.players[pId]?.position || 'N/A'
+                        };
+                    }
+                    allPlayers[pId].total_pts += weeklyData[pId].pts_ppr || 0;
+                    allPlayers[pId].games_played += 1;
+                }
+            }
+
+            // Calculate PPG
+            for (const pId in allPlayers) {
+                allPlayers[pId].ppg = allPlayers[pId].games_played > 0 ? allPlayers[pId].total_pts / allPlayers[pId].games_played : 0;
+            }
+
+            if (!allPlayers[playerId]) {
+                return {
+                    total_pts: 0,
+                    overallRank: 'N/A',
+                    posRank: 'N/A',
+                    ppg: 0,
+                    ppgOverallRank: 'N/A',
+                    ppgPosRank: 'N/A',
+                }
+            }
+
+            const playerList = Object.entries(allPlayers).map(([id, data]) => ({ id, ...data }));
+
+            // Sort by total points for overall and positional ranks
+            playerList.sort((a, b) => b.total_pts - a.total_pts);
+            const overallRank = playerList.findIndex(p => p.id === playerId) + 1;
+
+            const posPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
+            const posRank = posPlayers.findIndex(p => p.id === playerId) + 1;
+
+            // Sort by PPG for overall and positional ranks
+            playerList.sort((a, b) => b.ppg - a.ppg);
+            const ppgOverallRank = playerList.findIndex(p => p.id === playerId) + 1;
+
+            const ppgPosPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
+            const ppgPosRank = ppgPosPlayers.findIndex(p => p.id === playerId) + 1;
+
+            return {
+                total_pts: allPlayers[playerId].total_pts.toFixed(2),
+                overallRank,
+                posRank,
+                ppg: allPlayers[playerId].ppg.toFixed(2),
+                ppgOverallRank,
+                ppgPosRank,
+            };
         }
 
         async function fetchDataFromGoogleSheet() {
@@ -721,16 +784,35 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
             modalPlayerName.textContent = `${playerName}'s Game Logs`;
+            document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
             openModal();
 
             const gameLogs = await fetchGameLogs(player.id);
-            renderGameLogs(gameLogs, player);
+            const playerRanks = calculatePlayerStatsAndRanks(player.id);
+            renderGameLogs(gameLogs, player, playerRanks);
         }
 
-        function renderGameLogs(gameLogs, player) {
+        function renderGameLogs(gameLogs, player, playerRanks) {
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
+
+            // Render summary chips
+            const summaryChipsContainer = document.getElementById('modal-summary-chips');
+            summaryChipsContainer.innerHTML = `
+                <div class="summary-chip">
+                    <h4>Total</h4>
+                    <div><span>FPTS:</span><span>${playerRanks.total_pts}</span></div>
+                    <div><span>OVR RK:</span><span>${playerRanks.overallRank}</span></div>
+                    <div><span>POS RK:</span><span>${playerRanks.posRank}</span></div>
+                </div>
+                <div class="summary-chip">
+                    <h4>Per Game</h4>
+                    <div><span>PPG:</span><span>${playerRanks.ppg}</span></div>
+                    <div><span>OVR RK:</span><span>${playerRanks.ppgOverallRank}</span></div>
+                    <div><span>POS RK:</span><span>${playerRanks.ppgPosRank}</span></div>
+                </div>
+            `;
 
             if (!gameLogs || gameLogs.length === 0) {
                 modalBody.innerHTML = `<p class="no-logs">No game logs found for ${playerName} for the current season.</p>`;
@@ -750,6 +832,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 'fum_lost': 'Fumbles',
             };
 
+            if (player.pos === 'RB') {
+                relevantStats['ypc'] = 'YPC';
+            }
+
             let tableHTML = '<table><thead><tr><th>Wk</th>';
             const statKeys = Object.keys(relevantStats);
 
@@ -768,7 +854,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     if (player.pos === 'QB' && (key.startsWith('rec') || key.startsWith('rush'))) continue;
                     if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
 
-                    const value = weekStats.stats[key] || 0;
+                    let value;
+                    if (key === 'ypc') {
+                        const rushYds = weekStats.stats['rush_yd'] || 0;
+                        const rushAtt = weekStats.stats['rush_att'] || 0;
+                        value = rushAtt > 0 ? (rushYds / rushAtt) : 0;
+                    } else {
+                        value = weekStats.stats[key] || 0;
+                    }
+
                     if (value > 0) hasData = true;
                     rowHTML += `<td>${value.toFixed(2).replace(/\.00$/, '')}</td>`;
                 }

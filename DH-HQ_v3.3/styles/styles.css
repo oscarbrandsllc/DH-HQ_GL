@@ -2319,3 +2319,56 @@ font-weight: 500 !important;
     font-style: italic;
 }
 
+#modal-header {
+  text-align: center;
+}
+
+#modal-player-name {
+  margin-bottom: 1rem;
+}
+
+#modal-summary-chips {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.summary-chip {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--card-border-radius);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  min-width: 180px;
+}
+
+.summary-chip h4 {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-panel-border);
+  padding-bottom: 0.25rem;
+}
+
+.summary-chip div {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    padding-top: 0.25rem;
+}
+
+.summary-chip span {
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+#modal-body th:first-child, #modal-body td:first-child {
+  font-weight: 700;
+  color: var(--color-accent-secondary);
+  text-align: center;
+}
