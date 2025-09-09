@@ -2215,3 +2215,56 @@ font-weight: 500 !important;
   /* · · Center collapse icon: forced horizontal stretch via CSS sizing + preserveAspectRatio="none" · · */
 
 
+/* Game Log Modal */
+#gameLogModal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+#gameLogModal.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+#gameLogModal .modal-content {
+  position: relative;
+  max-width: 600px;
+  width: 90%;
+  padding: 1rem;
+  transform: scale(0.95);
+  transition: transform 0.2s ease;
+}
+#gameLogModal.active .modal-content {
+  transform: scale(1);
+}
+#gameLogModal .modal-close {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+#gameLogModal .gl-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+#gameLogModal .gl-table th,
+#gameLogModal .gl-table td {
+  padding: 0.25rem 0.5rem;
+  text-align: left;
+}
+#gameLogModal .gl-table tr:nth-child(even) {
+  background: rgba(255,255,255,0.03);
+}
+

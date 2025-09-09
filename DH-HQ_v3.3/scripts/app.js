@@ -24,6 +24,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const positionalFiltersContainer = document.getElementById('positional-filters');
         const clearFiltersButton = document.getElementById('clearFiltersButton');
         const tradeSimulator = document.getElementById('tradeSimulator');
+        const gameLogModal = document.getElementById('gameLogModal');
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
 
@@ -164,6 +165,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 if (e && e.target && e.target.blur) e.target.blur();
             });
             rosterGrid?.addEventListener('click', handleTeamSelect);
+            rosterGrid?.addEventListener('click', handlePlayerNameClick);
             mainContent?.addEventListener('click', handleAssetClickForTrade);
             compareButton?.addEventListener('click', handleCompareClick);
             clearCompareButton?.addEventListener('click', () => handleClearCompare(true));
@@ -171,6 +173,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             depthChartViewBtn?.addEventListener('click', () => setRosterView('depth'));
             positionalFiltersContainer?.addEventListener('click', handlePositionFilter);
             clearFiltersButton?.addEventListener('click', handleClearFilters);
+            gameLogModal?.addEventListener('click', (e) => { if (e.target === gameLogModal) closeGameLogModal(); });
+            gameLogModal?.querySelector('.modal-close')?.addEventListener('click', closeGameLogModal);
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGameLogModal(); });
         }
         
         // --- Initialization ---
@@ -440,7 +445,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 });
                 assetRow.classList.add('player-selected');
             }
-            
+
             renderTradeBlock();
         }
 
@@ -448,6 +453,58 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             state.tradeBlock = {};
             document.querySelectorAll('.player-selected').forEach(el => el.classList.remove('player-selected'));
             renderTradeBlock();
+        }
+
+        // --- Game Log Modal ---
+        function handlePlayerNameClick(e) {
+            const nameEl = e.target.closest('.player-name');
+            if (!nameEl || state.isCompareMode) return;
+            const row = nameEl.closest('.player-row');
+            if (!row) return;
+            const playerId = row.dataset.assetId;
+            const playerName = row.dataset.assetLabel;
+            if (!playerId) return;
+            openGameLogModal(playerId, playerName);
+        }
+
+        async function openGameLogModal(playerId, playerName) {
+            if (!gameLogModal) return;
+            const titleEl = gameLogModal.querySelector('.modal-title');
+            const bodyEl = gameLogModal.querySelector('.modal-body');
+            if (titleEl) titleEl.textContent = `${playerName} Logs`;
+            if (bodyEl) bodyEl.innerHTML = '<div class="text-center p-4">Loading...</div>';
+            gameLogModal.classList.remove('hidden');
+            requestAnimationFrame(() => gameLogModal.classList.add('active'));
+            const season = new Date().getFullYear();
+            try {
+                const data = await fetchWithCache(`${API_BASE}/stats/nfl/player/${playerId}?season_type=regular&season=${season}&group_by=week`);
+                renderGameLogs(data, bodyEl);
+            } catch (err) {
+                console.error('Failed to fetch game logs:', err);
+                if (bodyEl) bodyEl.innerHTML = '<div class="text-center p-4">No logs available.</div>';
+            }
+        }
+
+        function renderGameLogs(data, container) {
+            if (!container) return;
+            if (!data || Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="text-center p-4">No logs available.</div>';
+                return;
+            }
+            const weeks = Object.keys(data).sort((a, b) => Number(a) - Number(b));
+            let rows = '';
+            weeks.forEach(week => {
+                const stats = data[week] || {};
+                const pts = stats.pts_ppr ?? stats.pts_half_ppr ?? stats.pts_std ?? 0;
+                rows += `<tr><td>${week}</td><td>${pts.toFixed(2)}</td></tr>`;
+            });
+            container.innerHTML = `<table class="gl-table"><thead><tr><th>Week</th><th>Pts</th></tr></thead><tbody>${rows}</tbody></table>`;
+        }
+
+        function closeGameLogModal() {
+            if (!gameLogModal) return;
+            gameLogModal.classList.remove('active');
+            setTimeout(() => gameLogModal.classList.add('hidden'), 200);
         }
 
 
