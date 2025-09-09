@@ -27,6 +27,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
 
+        // --- Game Log Modal Elements ---
+        const gameLogModal = document.getElementById('gameLogModal');
+        const gameLogTitle = document.getElementById('gameLogTitle');
+        const gameLogBody = document.getElementById('gameLogBody');
+        const gameLogClose = document.getElementById('gameLogClose');
+
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -165,6 +171,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             rosterGrid?.addEventListener('click', handleTeamSelect);
             mainContent?.addEventListener('click', handleAssetClickForTrade);
+            rosterContainer?.addEventListener('click', handlePlayerNameClick);
             compareButton?.addEventListener('click', handleCompareClick);
             clearCompareButton?.addEventListener('click', () => handleClearCompare(true));
             positionalViewBtn?.addEventListener('click', () => setRosterView('positional'));
@@ -172,6 +179,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             positionalFiltersContainer?.addEventListener('click', handlePositionFilter);
             clearFiltersButton?.addEventListener('click', handleClearFilters);
         }
+
+        gameLogClose?.addEventListener('click', closeGameLogModal);
+        gameLogModal?.addEventListener('click', (e) => { if (e.target === gameLogModal) closeGameLogModal(); });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeGameLogModal(); });
         
         // --- Initialization ---
         document.addEventListener('DOMContentLoaded', async () => {
@@ -412,6 +423,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function handleAssetClickForTrade(e) {
             if (!state.isCompareMode) return;
+            if (e.target.closest('.player-name')) return;
 
             const assetRow = e.target.closest('.player-row, .pick-row');
             if (!assetRow) return;
@@ -448,6 +460,70 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             state.tradeBlock = {};
             document.querySelectorAll('.player-selected').forEach(el => el.classList.remove('player-selected'));
             renderTradeBlock();
+        }
+
+        function handlePlayerNameClick(e) {
+            const nameEl = e.target.closest('.player-name');
+            if (!nameEl) return;
+            e.stopPropagation();
+            const row = nameEl.closest('.player-row');
+            const playerId = row?.dataset.assetId;
+            if (!playerId) return;
+            openGameLogModal(playerId, nameEl.textContent.trim());
+        }
+
+        async function openGameLogModal(playerId, name) {
+            if (!gameLogModal || !gameLogTitle || !gameLogBody) return;
+            gameLogTitle.textContent = `${name} - Game Logs`;
+            gameLogBody.innerHTML = '<div style="padding:1rem;text-align:center;">Loading...</div>';
+            gameLogModal.classList.remove('hidden');
+            requestAnimationFrame(() => gameLogModal.classList.add('show'));
+            try {
+                const season = new Date().getFullYear();
+                const data = await fetchPlayerGameLogs(playerId, season);
+                renderGameLogs(data);
+            } catch (err) {
+                console.error('Failed to fetch game logs', err);
+                gameLogBody.innerHTML = '<p style="padding:1rem;text-align:center;">No logs available.</p>';
+            }
+        }
+
+        function closeGameLogModal() {
+            if (!gameLogModal) return;
+            gameLogModal.classList.remove('show');
+            setTimeout(() => gameLogModal.classList.add('hidden'), 200);
+        }
+
+        async function fetchPlayerGameLogs(playerId, season) {
+            const url = `${API_BASE}/stats/nfl/player/${playerId}?season=${season}&type=week`;
+            return await fetchWithCache(url);
+        }
+
+        function renderGameLogs(logData) {
+            if (!logData) {
+                gameLogBody.innerHTML = '<p style="padding:1rem;text-align:center;">No logs available.</p>';
+                return;
+            }
+            const weeks = Array.isArray(logData) ? logData : Object.values(logData);
+            if (!weeks.length) {
+                gameLogBody.innerHTML = '<p style="padding:1rem;text-align:center;">No logs available.</p>';
+                return;
+            }
+            weeks.sort((a,b)=>(a.week||0)-(b.week||0));
+            const table = document.createElement('table');
+            table.innerHTML = '<thead><tr><th>Week</th><th>Opp</th><th>Pts</th></tr></thead>';
+            const tbody = document.createElement('tbody');
+            weeks.forEach(w=>{
+                const week = w.week || w.week_num || w.week_number || '';
+                const opp = w.opponent || w.opp || '';
+                const pts = (w.pts_half_ppr ?? w.pts_ppr ?? w.pts_std ?? 0).toFixed(1);
+                const tr = document.createElement('tr');
+                tr.innerHTML = `<td>${week}</td><td>${opp}</td><td>${pts}</td>`;
+                tbody.appendChild(tr);
+            });
+            table.appendChild(tbody);
+            gameLogBody.innerHTML = '';
+            gameLogBody.appendChild(table);
         }
 
 
