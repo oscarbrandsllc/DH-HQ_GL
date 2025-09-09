@@ -2320,17 +2320,18 @@ font-weight: 500 !important;
 }
 
 #modal-header {
-  text-align: center;
+  text-align: left;
 }
 
 #modal-player-name {
+  text-align: center;
   margin-bottom: 1rem;
 }
 
 #modal-summary-chips {
   display: flex;
-  justify-content: center;
-  gap: 1rem;
+  justify-content: flex-start;
+  gap: 0.75rem;
   margin-bottom: 1rem;
   flex-wrap: wrap;
 }
@@ -2341,7 +2342,7 @@ font-weight: 500 !important;
   border-radius: var(--card-border-radius);
   padding: 0.5rem 0.75rem;
   text-align: left;
-  min-width: 180px;
+  min-width: 140px;
 }
 
 .summary-chip h4 {

@@ -801,16 +801,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
             summaryChipsContainer.innerHTML = `
                 <div class="summary-chip">
-                    <h4>Total</h4>
-                    <div><span>FPTS:</span><span>${playerRanks.total_pts}</span></div>
-                    <div><span>OVR RK:</span><span>${playerRanks.overallRank}</span></div>
-                    <div><span>POS RK:</span><span>${playerRanks.posRank}</span></div>
+                    <h4>Points</h4>
+                    <div><span>Total:</span><span>${playerRanks.total_pts}</span></div>
+                    <div><span>Per Game:</span><span>${playerRanks.ppg}</span></div>
                 </div>
                 <div class="summary-chip">
-                    <h4>Per Game</h4>
-                    <div><span>PPG:</span><span>${playerRanks.ppg}</span></div>
-                    <div><span>OVR RK:</span><span>${playerRanks.ppgOverallRank}</span></div>
-                    <div><span>POS RK:</span><span>${playerRanks.ppgPosRank}</span></div>
+                    <h4>Overall Rank</h4>
+                    <div><span>Total:</span><span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span></div>
+                    <div><span>Per Game:</span><span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span></div>
+                </div>
+                <div class="summary-chip">
+                    <h4>Positional Rank</h4>
+                    <div><span>Total:</span><span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span></div>
+                    <div><span>Per Game:</span><span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span></div>
                 </div>
             `;
 
@@ -1401,6 +1404,17 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 TE: '#ffae58'
             };
             return colors[position] || 'var(--color-text-secondary)';
+        }
+        function getRankColor(rank, isPositional = false) {
+            if (typeof rank !== 'number') return 'var(--color-text-primary)';
+            const thresholds = isPositional
+                ? [{ v: 5, c: '#00EEB6' }, { v: 12, c: '#14D7CB' }, { v: 24, c: '#0599AA' }, { v: 36, c: '#03a8ce' }]
+                : [{ v: 10, c: '#00EEB6' }, { v: 25, c: '#14D7CB' }, { v: 50, c: '#0599AA' }, { v: 100, c: '#03a8ce' }];
+
+            for (const t of thresholds) {
+                if (rank <= t.v) return t.c;
+            }
+            return 'var(--color-text-secondary)';
         }
         function getKtcColor(v){const s=[{v:9e3,c:"#00EEB6"},{v:8e3,c:"#14D7CB"},{v:7e3,c:"#0599AA"},{v:6e3,c:"#03a8ce"},{v:5500,c:"#0690DC"},{v:5e3,c:"#066CDC"},{v:4500,c:"#1350fd"},{v:4e3,c:"#5e41ff"},{v:3750,c:"#7158ff"},{v:3500,c:"#964eff"},{v:3250,c:"#9200ff"},{v:3e3,c:"#b70fff"},{v:2750,c:"#ba00cc"},{v:2500,c:"#e800ff"},{v:2250,c:"#db00af"},{v:2e3,c:"#c70097"},{v:0,c:"#FF0080"}];if(v===null||v===0)return"#e0e6ed";for(const t of s)if(v>=t.v)return t.c;return s[s.length-1].c}
         function getAdpColorForRoster(a){const s=[{v:12,c:"#00EEB6"},{v:24,c:"#14D7CB"},{v:36,c:"#0599AA"},{v:48,c:"#03a8ce"},{v:60,c:"#0690DC"},{v:72,c:"#066CDC"},{v:84,c:"#1350fd"},{v:96,c:"#5e41ff"},{v:108,c:"#7158ff"},{v:120,c:"#964eff"},{v:144,c:"#9200ff"},{v:168,c:"#b70fff"},{v:192,c:"#ba00cc"},{v:216,c:"#e800ff"},{v:240,c:"#db00af"},{v:280,c:"#c70097"},{v:320,c:"#FF0080"}];if(!a||a===0)return null;for(const t of s)if(a<=t.v)return t.c;return s[s.length-1].c}
