@@ -535,16 +535,27 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 console.error("Could not determine season for game log fetch.");
                 return [];
             }
-            try {
-                const stats = await fetchWithCache(`${API_BASE}/stats/nfl/player/${playerId}?season_type=regular&season=${season}&grouping=week`);
-                if (Array.isArray(stats)) {
-                    return stats;
+
+            const allWeeklyStats = [];
+            for (let week = 1; week <= 18; week++) {
+                try {
+                    const weeklyStats = await fetchWithCache(`${API_BASE}/stats/nfl/regular/${season}/${week}`);
+                    if (Object.keys(weeklyStats).length === 0) {
+                        // No more stats for the season, break the loop
+                        break;
+                    }
+                    if (weeklyStats[playerId]) {
+                        allWeeklyStats.push({
+                            week: week,
+                            stats: weeklyStats[playerId]
+                        });
+                    }
+                } catch (error) {
+                    // Stop fetching if a week fails, as subsequent weeks are unlikely to be available
+                    break;
                 }
-                return []; // Return empty array if stats is not an array
-            } catch (error) {
-                console.error(`Failed to fetch game logs for player ${playerId}:`, error);
-                return [];
             }
+            return allWeeklyStats;
         }
 
         async function fetchDataFromGoogleSheet() {
@@ -743,8 +754,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const statKeys = Object.keys(relevantStats);
 
             for (const key of statKeys) {
-                if (player.pos === 'QB' && (key.startsWith('rec_') || key.startsWith('rush_'))) continue;
-                if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass_')) continue;
+                if (player.pos === 'QB' && (key.startsWith('rec') || key.startsWith('rush'))) continue;
+                if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
                 tableHTML += `<th>${relevantStats[key]}</th>`;
             }
             tableHTML += '</tr></thead><tbody>';
@@ -754,8 +765,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 let rowHTML = `<td>${weekStats.week}</td>`;
 
                 for (const key of statKeys) {
-                    if (player.pos === 'QB' && (key.startsWith('rec_') || key.startsWith('rush_'))) continue;
-                    if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass_')) continue;
+                    if (player.pos === 'QB' && (key.startsWith('rec') || key.startsWith('rush'))) continue;
+                    if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
 
                     const value = weekStats.stats[key] || 0;
                     if (value > 0) hasData = true;
