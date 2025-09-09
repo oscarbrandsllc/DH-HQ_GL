@@ -567,19 +567,25 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             const allPlayers = {};
 
-            // Aggregate stats for all players
+            // Initialize with all players from state.players
+            for (const pId in state.players) {
+                allPlayers[pId] = {
+                    total_pts: 0,
+                    games_played: 0,
+                    pos: state.players[pId]?.position || 'N/A'
+                };
+            }
+
+            // Aggregate stats for players who have scored
             for (const week in state.weeklyStats) {
                 const weeklyData = state.weeklyStats[week];
                 for (const pId in weeklyData) {
-                    if (!allPlayers[pId]) {
-                        allPlayers[pId] = {
-                            total_pts: 0,
-                            games_played: 0,
-                            pos: state.players[pId]?.position || 'N/A'
-                        };
+                    if (allPlayers[pId]) { // Make sure the player exists in our list
+                        allPlayers[pId].total_pts += calculateFantasyPoints(weeklyData[pId], scoringSettings);
+                        if(calculateFantasyPoints(weeklyData[pId], scoringSettings) > 0) {
+                            allPlayers[pId].games_played += 1;
+                        }
                     }
-                    allPlayers[pId].total_pts += calculateFantasyPoints(weeklyData[pId], scoringSettings);
-                    allPlayers[pId].games_played += 1;
                 }
             }
 
