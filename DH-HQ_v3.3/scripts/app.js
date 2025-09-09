@@ -27,6 +27,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
 
+        const gameLogsModal = document.getElementById('game-logs-modal');
+        const modalCloseBtn = document.querySelector('.modal-close-btn');
+        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalPlayerName = document.getElementById('modal-player-name');
+        const modalBody = document.getElementById('modal-body');
+
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -171,6 +177,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             depthChartViewBtn?.addEventListener('click', () => setRosterView('depth'));
             positionalFiltersContainer?.addEventListener('click', handlePositionFilter);
             clearFiltersButton?.addEventListener('click', handleClearFilters);
+
+            if (gameLogsModal) {
+                modalCloseBtn.addEventListener('click', () => closeModal());
+                modalOverlay.addEventListener('click', () => closeModal());
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                });
+            }
         }
         
         // --- Initialization ---
@@ -513,6 +529,21 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             try { state.players = await fetchWithCache(`${API_BASE}/players/nfl`); } catch (e) { console.error("Failed to fetch Sleeper players:", e); }
         }
         
+        async function fetchGameLogs(playerId) {
+            const season = state.leagues.find(l => l.league_id === state.currentLeagueId)?.season;
+            if (!season) {
+                console.error("Could not determine season for game log fetch.");
+                return [];
+            }
+            try {
+                const stats = await fetchWithCache(`${API_BASE}/stats/nfl/player/${playerId}?season_type=regular&season=${season}&grouping=week`);
+                return stats;
+            } catch (error) {
+                console.error(`Failed to fetch game logs for player ${playerId}:`, error);
+                return [];
+            }
+        }
+
         async function fetchDataFromGoogleSheet() {
             const sheetNames = { oneQb: 'KTC_1QB', sflx: 'KTC_SFLX' };
             try {
@@ -671,6 +702,73 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         // --- UI Rendering ---
+        async function handlePlayerNameClick(player) {
+            const fullPlayer = state.players[player.id];
+            const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
+
+            modalPlayerName.textContent = `${playerName}'s Game Logs`;
+            modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
+            openModal();
+
+            const gameLogs = await fetchGameLogs(player.id);
+            renderGameLogs(gameLogs, player);
+        }
+
+        function renderGameLogs(gameLogs, player) {
+            const fullPlayer = state.players[player.id];
+            const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
+
+            if (!gameLogs || gameLogs.length === 0) {
+                modalBody.innerHTML = `<p class="no-logs">No game logs found for ${playerName} for the current season.</p>`;
+                return;
+            }
+
+            const relevantStats = {
+                'pts_ppr': 'PPR Pts',
+                'rec': 'Rec',
+                'rec_yd': 'Rec Yds',
+                'rec_td': 'Rec TD',
+                'rush_att': 'Rush Att',
+                'rush_yd': 'Rush Yds',
+                'rush_td': 'Rush TD',
+                'pass_yd': 'Pass Yds',
+                'pass_td': 'Pass TD',
+                'fum_lost': 'Fumbles',
+            };
+
+            let tableHTML = '<table><thead><tr><th>Wk</th>';
+            const statKeys = Object.keys(relevantStats);
+
+            for (const key of statKeys) {
+                if (player.pos === 'QB' && (key.startsWith('rec_') || key.startsWith('rush_'))) continue;
+                if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass_')) continue;
+                tableHTML += `<th>${relevantStats[key]}</th>`;
+            }
+            tableHTML += '</tr></thead><tbody>';
+
+            gameLogs.sort((a, b) => parseInt(a.week) - parseInt(b.week)).forEach(weekStats => {
+                let hasData = false;
+                let rowHTML = `<td>${weekStats.week}</td>`;
+
+                for (const key of statKeys) {
+                    if (player.pos === 'QB' && (key.startsWith('rec_') || key.startsWith('rush_'))) continue;
+                    if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass_')) continue;
+
+                    const value = weekStats.stats[key] || 0;
+                    if (value > 0) hasData = true;
+                    rowHTML += `<td>${value.toFixed(2).replace(/\.00$/, '')}</td>`;
+                }
+
+                if(hasData) {
+                    tableHTML += `<tr>${rowHTML}</tr>`;
+                }
+            });
+
+            tableHTML += '</tbody></table>';
+
+            modalBody.innerHTML = tableHTML;
+        }
+
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
             leagues.forEach(l => {
@@ -877,6 +975,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (ageEl && player.age && player.age !== '?') ageEl.style.color = getAgeColorForRoster(player.pos, parseFloat(player.age));
             if (adpEl && player.adp) adpEl.style.color = getAdpColorForRoster(parseFloat(adp));
             if (ktcEl && player.ktc) ktcEl.style.color = getKtcColor(player.ktc);
+
+            const playerNameEl = row.querySelector('.player-name');
+            if (playerNameEl) {
+                playerNameEl.style.cursor = 'pointer';
+                playerNameEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handlePlayerNameClick(player);
+                });
+            }
+
             return row;
         }
 
@@ -1203,6 +1311,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function ordinalSuffix(i){ const j=i%10, k=i%100; if(j===1&&k!==11) return i+'st'; if(j===2&&k!==12) return i+'nd'; if(j===3&&k!==13) return i+'rd'; return i+'th'; }
 
         // --- Utility Functions ---
+        function openModal() {
+            gameLogsModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            gameLogsModal.classList.add('hidden');
+        }
+
         function setLoading(isLoading, message = 'Loading...') {
             welcomeScreen?.classList.add('hidden');
             const buttons = [fetchRostersButton, fetchOwnershipButton].filter(Boolean);
