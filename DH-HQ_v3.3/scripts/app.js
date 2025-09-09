@@ -811,31 +811,34 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
-            // Render summary chips
+            // Update modal header
+            modalPlayerName.textContent = playerName;
+            const posTagHTML = `<div class="player-tag" style="background-color: ${TAG_COLORS[player.pos] || 'var(--pos-bn)'};">${player.pos}</div>`;
+
+            const header = document.getElementById('modal-header');
+            const existingTag = header.querySelector('.player-tag');
+            if (existingTag) {
+                existingTag.remove();
+            }
+            header.insertAdjacentHTML('afterbegin', posTagHTML);
+
+
+            // New summary card
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
+            const ovrRank = playerRanks.overallRank > 999 ? "NA" : `#${playerRanks.overallRank}`;
+            const ppgOvrRank = playerRanks.ppgOverallRank > 999 ? "NA" : `#${playerRanks.ppgOverallRank}`;
+
             summaryChipsContainer.innerHTML = `
-                <div class="summary-chip">
-                    <h4>FPTS / PPG</h4>
-                    <div class="chip-values">
-                        <span>${playerRanks.total_pts}</span>
-                        <span class="chip-separator">/</span>
-                        <span>${playerRanks.ppg}</span>
+                <div class="summary-card">
+                    <div class="summary-row">
+                        <span class="summary-tag" style="color: ${getRankColor(playerRanks.overallRank)}">${ovrRank}</span>
+                        <span class="summary-tag">${playerRanks.total_pts}fpts</span>
+                        <span class="summary-tag" style="color: ${getRankColor(playerRanks.posRank, true)}">${player.pos}·${playerRanks.posRank}</span>
                     </div>
-                </div>
-                <div class="summary-chip">
-                    <h4>OVR RANK</h4>
-                    <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span>
-                    </div>
-                </div>
-                <div class="summary-chip">
-                    <h4>POS RANK</h4>
-                    <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
+                    <div class="summary-row">
+                        <span class="summary-tag" style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${ppgOvrRank}</span>
+                        <span class="summary-tag">${playerRanks.ppg}ppg</span>
+                        <span class="summary-tag" style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${player.pos}·${playerRanks.ppgPosRank}</span>
                     </div>
                 </div>
             `;
