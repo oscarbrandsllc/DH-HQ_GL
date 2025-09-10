@@ -829,7 +829,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             } else {
                 fptsRankHTML = `
                     <span style="color: ${getRankColor(playerRanks.overallRank)}">#${playerRanks.overallRank}</span>
-                    <span> / ${player.pos}·${playerRanks.posRank}</span>
+                    <span> / </span>
+                    <span style="color: ${getPosRankColor(player.pos)}">${player.pos}·</span>
+                    <span style="color: ${getGameLogPosRankColor(player.pos, playerRanks.posRank)}">${playerRanks.posRank}</span>
                 `;
             }
 
@@ -839,7 +841,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             } else {
                 ppgRankHTML = `
                     <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">#${playerRanks.ppgOverallRank}</span>
-                    <span> / ${player.pos}·${playerRanks.ppgPosRank}</span>
+                    <span> / </span>
+                    <span style="color: ${getPosRankColor(player.pos)}">${player.pos}·</span>
+                    <span style="color: ${getGameLogPosRankColor(player.pos, playerRanks.ppgPosRank)}">${playerRanks.ppgPosRank}</span>
                 `;
             }
 
@@ -1468,15 +1472,69 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             return totalPoints;
         }
 
-        function getRankColor(rank, isPositional = false) {
+        function getRankColor(rank) {
             if (typeof rank !== 'number') return 'var(--color-text-primary)';
-            const thresholds = isPositional
-                ? [{ v: 5, c: '#00EEB6' }, { v: 12, c: '#14D7CB' }, { v: 24, c: '#0599AA' }, { v: 36, c: '#03a8ce' }]
-                : [{ v: 10, c: '#00EEB6' }, { v: 25, c: '#14D7CB' }, { v: 50, c: '#0599AA' }, { v: 100, c: '#03a8ce' }];
+            const thresholds = [
+                { v: 24, c: '#00ffc4' },
+                { v: 48, c: '#85fff3' },
+                { v: 72, c: '#7dd1ff' },
+                { v: 96, c: '#48a6ff' },
+                { v: 120, c: '#957cff' },
+                { v: 156, c: '#a642ff' },
+                { v: 180, c: '#cf60ff' },
+                { v: 204, c: '#ff6fe1' },
+                { v: 250, c: '#ff2eb2' },
+            ];
 
             for (const t of thresholds) {
                 if (rank <= t.v) return t.c;
             }
+
+            if (rank > 250 && rank < 300) return '#ff0080';
+            if (rank >= 300) return '#656565';
+
+            return 'var(--color-text-secondary)';
+        }
+        function getGameLogPosRankColor(pos, rank) {
+            if (typeof rank !== 'number') return 'var(--color-text-primary)';
+
+            const wrThresholds = [
+                { v: 6, c: '#00ffc4' },
+                { v: 12, c: '#85fff3' },
+                { v: 18, c: '#7dd1ff' },
+                { v: 24, c: '#48a6ff' },
+                { v: 36, c: '#957cff' },
+                { v: 48, c: '#a642ff' },
+                { v: 60, c: '#cf60ff' },
+                { v: 72, c: '#ff6fe1' },
+                { v: 84, c: '#ff2eb2' },
+            ];
+
+            const otherThresholds = [
+                { v: 4, c: '#00ffc4' },
+                { v: 8, c: '#85fff3' },
+                { v: 12, c: '#7dd1ff' },
+                { v: 18, c: '#48a6ff' },
+                { v: 24, c: '#957cff' },
+                { v: 30, c: '#a642ff' },
+                { v: 36, c: '#ff6fe1' },
+                { v: 48, c: '#ff2eb2' },
+            ];
+
+            const thresholds = pos === 'WR' ? wrThresholds : otherThresholds;
+
+            for (const t of thresholds) {
+                if (rank <= t.v) return t.c;
+            }
+
+            if (pos === 'WR') {
+                if (rank > 84 && rank < 96) return '#ff0080';
+                if (rank >= 96) return '#656565';
+            } else {
+                if (rank > 48 && rank < 60) return '#ff0080';
+                if (rank >= 60) return '#656565';
+            }
+
             return 'var(--color-text-secondary)';
         }
         function getKtcColor(v){const s=[{v:9e3,c:"#00EEB6"},{v:8e3,c:"#14D7CB"},{v:7e3,c:"#0599AA"},{v:6e3,c:"#03a8ce"},{v:5500,c:"#0690DC"},{v:5e3,c:"#066CDC"},{v:4500,c:"#1350fd"},{v:4e3,c:"#5e41ff"},{v:3750,c:"#7158ff"},{v:3500,c:"#964eff"},{v:3250,c:"#9200ff"},{v:3e3,c:"#b70fff"},{v:2750,c:"#ba00cc"},{v:2500,c:"#e800ff"},{v:2250,c:"#db00af"},{v:2e3,c:"#c70097"},{v:0,c:"#FF0080"}];if(v===null||v===0)return"#e0e6ed";for(const t of s)if(v>=t.v)return t.c;return s[s.length-1].c}
