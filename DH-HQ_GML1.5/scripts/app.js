@@ -32,6 +32,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const modalOverlay = document.querySelector('.modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+        const modalPosTag = document.getElementById('modal-position-tag');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -794,6 +795,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
             modalPlayerName.textContent = `${playerName}'s Game Logs`;
+            modalPosTag.textContent = player.pos;
+            modalPosTag.style.backgroundColor = TAG_COLORS[player.pos] || 'var(--pos-bn)';
             document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
             openModal();
@@ -813,6 +816,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             // Render summary chips
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
+            const formatOverall = (r) => (typeof r === 'number' && r <= 999) ? `#${r}` : 'NA';
+            const formatPos = (r) => (typeof r === 'number' && r > 0) ? r : 'NA';
             summaryChipsContainer.innerHTML = `
                 <div class="summary-chip">
                     <h4>FPTS / PPG</h4>
@@ -823,19 +828,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>OVR RANK</h4>
+                    <h4>FPTS RK</h4>
                     <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${formatOverall(playerRanks.overallRank)}</span>
                         <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${player.pos}&middot;${formatPos(playerRanks.posRank)}</span>
                     </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>POS RANK</h4>
+                    <h4>PPG RK</h4>
                     <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${formatOverall(playerRanks.ppgOverallRank)}</span>
                         <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${player.pos}&middot;${formatPos(playerRanks.ppgPosRank)}</span>
                     </div>
                 </div>
             `;
@@ -902,7 +907,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             tableHTML += '</tbody></table>';
 
-            modalBody.innerHTML = tableHTML;
+            modalBody.innerHTML = `<div class="table-card">${tableHTML}</div>`;
         }
 
         function populateLeagueSelect(leagues) {
