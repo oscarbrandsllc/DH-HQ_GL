@@ -623,11 +623,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             return {
                 total_pts: allPlayers[playerId].total_pts.toFixed(2),
-                overallRank,
-                posRank,
+                overallRank: overallRank > 999 ? 'NA' : overallRank,
+                posRank: posRank > 999 ? 'NA' : posRank,
                 ppg: allPlayers[playerId].ppg.toFixed(2),
-                ppgOverallRank,
-                ppgPosRank,
+                ppgOverallRank: ppgOverallRank > 999 ? 'NA' : ppgOverallRank,
+                ppgPosRank: ppgPosRank > 999 ? 'NA' : ppgPosRank,
             };
         }
 
@@ -795,6 +795,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             modalPlayerName.textContent = `${playerName}'s Game Logs`;
             document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
+            const existingTag = document.querySelector('.modal-pos-tag');
+            if(existingTag) existingTag.remove();
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
             openModal();
 
@@ -811,8 +813,24 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
+            const modalHeader = document.getElementById('modal-header');
+            const posTag = document.createElement('div');
+            posTag.className = 'player-tag modal-pos-tag';
+            posTag.textContent = player.pos;
+            posTag.style.backgroundColor = TAG_COLORS[player.pos] || 'var(--pos-bn)';
+            modalHeader.insertBefore(posTag, modalHeader.firstChild);
+
             // Render summary chips
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
+
+            const fptsRankStr = playerRanks.overallRank === 'NA'
+                ? 'NA'
+                : `#${playerRanks.overallRank} / ${player.pos}·${playerRanks.posRank}`;
+
+            const ppgRankStr = playerRanks.ppgOverallRank === 'NA'
+                ? 'NA'
+                : `#${playerRanks.ppgOverallRank} / ${player.pos}·${playerRanks.ppgPosRank}`;
+
             summaryChipsContainer.innerHTML = `
                 <div class="summary-chip">
                     <h4>FPTS / PPG</h4>
@@ -823,19 +841,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>OVR RANK</h4>
+                    <h4>FPTS RKs</h4>
                     <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${fptsRankStr}</span>
                     </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>POS RANK</h4>
+                    <h4>PPG RKs</h4>
                     <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${ppgRankStr}</span>
                     </div>
                 </div>
             `;
@@ -862,7 +876,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 relevantStats['ypc'] = 'YPC';
             }
 
-            let tableHTML = '<table><thead><tr><th>Wk</th>';
+            let tableHTML = '<div class="game-logs-table-container"><table><thead><tr><th>Wk</th>';
             const statKeys = Object.keys(relevantStats);
 
             for (const key of statKeys) {
@@ -900,7 +914,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 }
             });
 
-            tableHTML += '</tbody></table>';
+            tableHTML += '</tbody></table></div>';
 
             modalBody.innerHTML = tableHTML;
         }
