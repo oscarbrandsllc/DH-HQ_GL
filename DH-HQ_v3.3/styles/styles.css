@@ -2214,4 +2214,185 @@ font-weight: 500 !important;
 
   /* · · Center collapse icon: forced horizontal stretch via CSS sizing + preserveAspectRatio="none" · · */
 
+/* ⬇︎  Game Logs Modal  ⬇︎ */
+#game-logs-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s ease-in-out;
+}
+
+#game-logs-modal.hidden {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  z-index: 101;
+  padding: 1.5rem;
+  border-radius: var(--panel-border-radius);
+  max-width: 90%;
+  width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+  transform: scale(0.95);
+  opacity: 0;
+  transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+#game-logs-modal:not(.hidden) .modal-content {
+    transform: scale(1);
+    opacity: 1;
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  color: var(--color-text-primary);
+}
+
+#modal-header h3 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+#modal-body {
+  color: var(--color-text-secondary);
+}
+
+.table-card-container {
+  overflow-x: auto;
+  background: rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--card-border-radius);
+  padding: 0.5rem;
+}
+
+#modal-body table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+#modal-body th,
+#modal-body td {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-panel-border);
+}
+
+#modal-body th {
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+#modal-body tr:last-child td {
+    border-bottom: none;
+}
+
+#modal-body .no-logs {
+    text-align: center;
+    padding: 2rem;
+    font-style: italic;
+}
+
+#modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+#modal-header .player-tag {
+  /* No special positioning needed */
+}
+
+#modal-player-name {
+  flex-grow: 1;
+  text-align: center;
+}
+
+.header-placeholder {
+    width: 30px; /* Approximate width of the player tag */
+}
+
+#modal-summary-chips {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.summary-chip {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--color-panel-border);
+  border-radius: var(--card-border-radius);
+  padding: 0.25rem 0.5rem;
+  text-align: center;
+  min-width: auto;
+}
+
+.summary-chip h4 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.1rem;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--color-panel-border);
+  padding-bottom: 0.1rem;
+}
+
+.chip-values {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.9rem;
+    color: var(--color-text-primary);
+    font-weight: 700;
+}
+
+.chip-separator {
+    color: var(--color-text-tertiary);
+    font-size: 0.8rem;
+    font-weight: 400;
+}
+
+#modal-body th:first-child, #modal-body td:first-child {
+  font-weight: 700;
+  color: var(--color-accent-secondary);
+  text-align: center;
+}
 

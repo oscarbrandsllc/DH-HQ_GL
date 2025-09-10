@@ -27,6 +27,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
 
+        const gameLogsModal = document.getElementById('game-logs-modal');
+        const modalCloseBtn = document.querySelector('.modal-close-btn');
+        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalPlayerName = document.getElementById('modal-player-name');
+        const modalBody = document.getElementById('modal-body');
+
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -107,7 +113,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         });
 
         // --- State ---
-        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false };
+        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false, weeklyStats: {} };
         const assignedLeagueColors = new Map();
         let nextColorIndex = 0;
         const assignedRyColors = new Map();
@@ -171,6 +177,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             depthChartViewBtn?.addEventListener('click', () => setRosterView('depth'));
             positionalFiltersContainer?.addEventListener('click', handlePositionFilter);
             clearFiltersButton?.addEventListener('click', handleClearFilters);
+
+            if (gameLogsModal) {
+                modalCloseBtn.addEventListener('click', () => closeModal());
+                modalOverlay.addEventListener('click', () => closeModal());
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                });
+            }
         }
         
         // --- Initialization ---
@@ -513,6 +529,108 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             try { state.players = await fetchWithCache(`${API_BASE}/players/nfl`); } catch (e) { console.error("Failed to fetch Sleeper players:", e); }
         }
         
+        async function fetchGameLogs(playerId) {
+            const season = state.leagues.find(l => l.league_id === state.currentLeagueId)?.season;
+            if (!season) {
+                console.error("Could not determine season for game log fetch.");
+                return [];
+            }
+
+            state.weeklyStats = {}; // Clear previous weekly stats
+            const allWeeklyStats = [];
+
+            for (let week = 1; week <= 18; week++) {
+                try {
+                    const weeklyStats = await fetchWithCache(`${API_BASE}/stats/nfl/regular/${season}/${week}`);
+                    if (Object.keys(weeklyStats).length === 0) {
+                        break;
+                    }
+                    state.weeklyStats[week] = weeklyStats; // Store for rank calculation
+
+                    if (weeklyStats[playerId]) {
+                        allWeeklyStats.push({
+                            week: week,
+                            stats: weeklyStats[playerId]
+                        });
+                    }
+                } catch (error) {
+                    break;
+                }
+            }
+            return allWeeklyStats;
+        }
+
+        function calculatePlayerStatsAndRanks(playerId) {
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return null;
+            const scoringSettings = league.scoring_settings;
+
+            const allPlayers = {};
+
+            // Initialize with all players from state.players
+            for (const pId in state.players) {
+                allPlayers[pId] = {
+                    total_pts: 0,
+                    games_played: 0,
+                    pos: state.players[pId]?.position || 'N/A'
+                };
+            }
+
+            // Aggregate stats for players who have scored
+            for (const week in state.weeklyStats) {
+                const weeklyData = state.weeklyStats[week];
+                for (const pId in weeklyData) {
+                    if (allPlayers[pId]) { // Make sure the player exists in our list
+                        allPlayers[pId].total_pts += calculateFantasyPoints(weeklyData[pId], scoringSettings);
+                        if(calculateFantasyPoints(weeklyData[pId], scoringSettings) > 0) {
+                            allPlayers[pId].games_played += 1;
+                        }
+                    }
+                }
+            }
+
+            // Calculate PPG
+            for (const pId in allPlayers) {
+                allPlayers[pId].ppg = allPlayers[pId].games_played > 0 ? allPlayers[pId].total_pts / allPlayers[pId].games_played : 0;
+            }
+
+            if (!allPlayers[playerId]) {
+                return {
+                    total_pts: 0,
+                    overallRank: 'N/A',
+                    posRank: 'N/A',
+                    ppg: 0,
+                    ppgOverallRank: 'N/A',
+                    ppgPosRank: 'N/A',
+                }
+            }
+
+            const playerList = Object.entries(allPlayers).map(([id, data]) => ({ id, ...data }));
+
+            // Sort by total points for overall and positional ranks
+            playerList.sort((a, b) => b.total_pts - a.total_pts);
+            const overallRank = playerList.findIndex(p => p.id === playerId) + 1;
+
+            const posPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
+            const posRank = posPlayers.findIndex(p => p.id === playerId) + 1;
+
+            // Sort by PPG for overall and positional ranks
+            playerList.sort((a, b) => b.ppg - a.ppg);
+            const ppgOverallRank = playerList.findIndex(p => p.id === playerId) + 1;
+
+            const ppgPosPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
+            const ppgPosRank = ppgPosPlayers.findIndex(p => p.id === playerId) + 1;
+
+            return {
+                total_pts: allPlayers[playerId].total_pts.toFixed(2),
+                overallRank,
+                posRank,
+                ppg: allPlayers[playerId].ppg.toFixed(2),
+                ppgOverallRank,
+                ppgPosRank,
+            };
+        }
+
         async function fetchDataFromGoogleSheet() {
             const sheetNames = { oneQb: 'KTC_1QB', sflx: 'KTC_SFLX' };
             try {
@@ -671,6 +789,131 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         // --- UI Rendering ---
+        async function handlePlayerNameClick(player) {
+            const fullPlayer = state.players[player.id];
+            const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
+
+            modalPlayerName.textContent = `${playerName}'s Game Logs`;
+            document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
+            modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
+            openModal();
+
+            const gameLogs = await fetchGameLogs(player.id);
+            const playerRanks = calculatePlayerStatsAndRanks(player.id);
+            renderGameLogs(gameLogs, player, playerRanks);
+        }
+
+        function renderGameLogs(gameLogs, player, playerRanks) {
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return;
+            const scoringSettings = league.scoring_settings;
+
+            const fullPlayer = state.players[player.id];
+            const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
+
+            // Update modal header
+            const header = document.getElementById('modal-header');
+            header.innerHTML = `
+                <div class="player-tag" style="background-color: ${TAG_COLORS[player.pos] || 'var(--pos-bn)'};">${player.pos}</div>
+                <h3 id="modal-player-name">${playerName}</h3>
+                <div class="header-placeholder"></div>
+            `;
+
+
+            // Reverted summary chips
+            const summaryChipsContainer = document.getElementById('modal-summary-chips');
+            summaryChipsContainer.innerHTML = `
+                <div class="summary-chip">
+                    <h4>FPTS / PPG</h4>
+                    <div class="chip-values">
+                        <span>${playerRanks.total_pts}</span>
+                        <span class="chip-separator">/</span>
+                        <span>${playerRanks.ppg}</span>
+                    </div>
+                </div>
+                <div class="summary-chip">
+                    <h4>OVR RANK</h4>
+                    <div class="chip-values">
+                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank > 999 ? 'NA' : playerRanks.overallRank}</span>
+                        <span class="chip-separator">/</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank > 999 ? 'NA' : playerRanks.ppgOverallRank}</span>
+                    </div>
+                </div>
+                <div class="summary-chip">
+                    <h4>POS RANK</h4>
+                    <div class="chip-values">
+                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
+                        <span class="chip-separator">/</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
+                    </div>
+                </div>
+            `;
+
+            if (!gameLogs || gameLogs.length === 0) {
+                modalBody.innerHTML = `<p class="no-logs">No game logs found for ${playerName} for the current season.</p>`;
+                return;
+            }
+
+            const relevantStats = {
+                'fpts': 'FPTS',
+                'rec': 'Rec',
+                'rec_yd': 'Rec Yds',
+                'rec_td': 'Rec TD',
+                'rush_att': 'Rush Att',
+                'rush_yd': 'Rush Yds',
+                'rush_td': 'Rush TD',
+                'pass_yd': 'Pass Yds',
+                'pass_td': 'Pass TD',
+                'fum_lost': 'Fumbles',
+            };
+
+            if (player.pos === 'RB') {
+                relevantStats['ypc'] = 'YPC';
+            }
+
+            let tableHTML = '<div class="table-card-container"><table><thead><tr><th>Wk</th>';
+            const statKeys = Object.keys(relevantStats);
+
+            for (const key of statKeys) {
+                if (player.pos === 'QB' && (key.startsWith('rec') || key.startsWith('rush'))) continue;
+                if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
+                tableHTML += `<th>${relevantStats[key]}</th>`;
+            }
+            tableHTML += '</tr></thead><tbody>';
+
+            gameLogs.sort((a, b) => parseInt(a.week) - parseInt(b.week)).forEach(weekStats => {
+                let hasData = false;
+                let rowHTML = `<td>${weekStats.week}</td>`;
+
+                for (const key of statKeys) {
+                    if (player.pos === 'QB' && (key.startsWith('rec') || key.startsWith('rush'))) continue;
+                    if ((player.pos === 'RB' || player.pos === 'WR' || player.pos === 'TE') && key.startsWith('pass')) continue;
+
+                    let value;
+                    if (key === 'fpts') {
+                        value = calculateFantasyPoints(weekStats.stats, scoringSettings);
+                    } else if (key === 'ypc') {
+                        const rushYds = weekStats.stats['rush_yd'] || 0;
+                        const rushAtt = weekStats.stats['rush_att'] || 0;
+                        value = rushAtt > 0 ? (rushYds / rushAtt) : 0;
+                    } else {
+                        value = weekStats.stats[key] || 0;
+                    }
+
+                    if (value > 0) hasData = true;
+                    rowHTML += `<td>${value.toFixed(2).replace(/\.00$/, '')}</td>`;
+                }
+
+                if(hasData) {
+                    tableHTML += `<tr>${rowHTML}</tr>`;
+                }
+            });
+
+            tableHTML += '</tbody></table></div>';
+
+            modalBody.innerHTML = tableHTML;
+        }
+
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
             leagues.forEach(l => {
@@ -877,6 +1120,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (ageEl && player.age && player.age !== '?') ageEl.style.color = getAgeColorForRoster(player.pos, parseFloat(player.age));
             if (adpEl && player.adp) adpEl.style.color = getAdpColorForRoster(parseFloat(adp));
             if (ktcEl && player.ktc) ktcEl.style.color = getKtcColor(player.ktc);
+
+            const playerNameEl = row.querySelector('.player-name');
+            if (playerNameEl) {
+                playerNameEl.style.cursor = 'pointer';
+                playerNameEl.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    handlePlayerNameClick(player);
+                });
+            }
+
             return row;
         }
 
@@ -1186,6 +1439,29 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             };
             return colors[position] || 'var(--color-text-secondary)';
         }
+        function calculateFantasyPoints(stats, scoringSettings) {
+            let totalPoints = 0;
+            if (!stats || !scoringSettings) return 0;
+
+            for (const statKey in stats) {
+                if (scoringSettings[statKey]) {
+                    totalPoints += stats[statKey] * scoringSettings[statKey];
+                }
+            }
+            return totalPoints;
+        }
+
+        function getRankColor(rank, isPositional = false) {
+            if (typeof rank !== 'number') return 'var(--color-text-primary)';
+            const thresholds = isPositional
+                ? [{ v: 5, c: '#00EEB6' }, { v: 12, c: '#14D7CB' }, { v: 24, c: '#0599AA' }, { v: 36, c: '#03a8ce' }]
+                : [{ v: 10, c: '#00EEB6' }, { v: 25, c: '#14D7CB' }, { v: 50, c: '#0599AA' }, { v: 100, c: '#03a8ce' }];
+
+            for (const t of thresholds) {
+                if (rank <= t.v) return t.c;
+            }
+            return 'var(--color-text-secondary)';
+        }
         function getKtcColor(v){const s=[{v:9e3,c:"#00EEB6"},{v:8e3,c:"#14D7CB"},{v:7e3,c:"#0599AA"},{v:6e3,c:"#03a8ce"},{v:5500,c:"#0690DC"},{v:5e3,c:"#066CDC"},{v:4500,c:"#1350fd"},{v:4e3,c:"#5e41ff"},{v:3750,c:"#7158ff"},{v:3500,c:"#964eff"},{v:3250,c:"#9200ff"},{v:3e3,c:"#b70fff"},{v:2750,c:"#ba00cc"},{v:2500,c:"#e800ff"},{v:2250,c:"#db00af"},{v:2e3,c:"#c70097"},{v:0,c:"#FF0080"}];if(v===null||v===0)return"#e0e6ed";for(const t of s)if(v>=t.v)return t.c;return s[s.length-1].c}
         function getAdpColorForRoster(a){const s=[{v:12,c:"#00EEB6"},{v:24,c:"#14D7CB"},{v:36,c:"#0599AA"},{v:48,c:"#03a8ce"},{v:60,c:"#0690DC"},{v:72,c:"#066CDC"},{v:84,c:"#1350fd"},{v:96,c:"#5e41ff"},{v:108,c:"#7158ff"},{v:120,c:"#964eff"},{v:144,c:"#9200ff"},{v:168,c:"#b70fff"},{v:192,c:"#ba00cc"},{v:216,c:"#e800ff"},{v:240,c:"#db00af"},{v:280,c:"#c70097"},{v:320,c:"#FF0080"}];if(!a||a===0)return null;for(const t of s)if(a<=t.v)return t.c;return s[s.length-1].c}
         function getAgeColorForRoster(p,a){const s={wrTe:[{v:22.5,c:"#00ffc4"},{v:25,c:"#85fff3"},{v:26,c:"#56dfe8"},{v:27,c:"#7dd1ff"},{v:29,c:"#89a3ff"},{v:30,c:"#957cff"},{v:31,c:"#a642ff"},{v:32,c:"#cf60ff"},{v:33,c:"#ff6fe1"}],rb:[{v:22.5,c:"#00ffc4"},{v:24,c:"#85fff3"},{v:25,c:"#56dfe8"},{v:26,c:"#7dd1ff"},{v:27,c:"#89a3ff"},{v:28,c:"#957cff"},{v:29,c:"#a642ff"},{v:30,c:"#cf60ff"},{v:31,c:"#ff6fe1"}],qb:[{v:25.5,c:"#00ffc4"},{v:28,c:"#85fff3"},{v:29,c:"#7dd1ff"},{v:31,c:"#48a6ff"},{v:33,c:"#957cff"},{v:36,c:"#a642ff"},{v:40,c:"#cf60ff"},{v:44,c:"#ff6fe1"}]};let sc=p==="WR"||p==="TE"?s.wrTe:p==="RB"?s.rb:p==="QB"?s.qb:null;if(!sc||!a||a===0)return null;for(const t of sc)if(a<=t.v)return t.c;return sc[sc.length-1].c}
@@ -1203,6 +1479,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function ordinalSuffix(i){ const j=i%10, k=i%100; if(j===1&&k!==11) return i+'st'; if(j===2&&k!==12) return i+'nd'; if(j===3&&k!==13) return i+'rd'; return i+'th'; }
 
         // --- Utility Functions ---
+        function openModal() {
+            gameLogsModal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            gameLogsModal.classList.add('hidden');
+        }
+
         function setLoading(isLoading, message = 'Loading...') {
             welcomeScreen?.classList.add('hidden');
             const buttons = [fetchRostersButton, fetchOwnershipButton].filter(Boolean);
