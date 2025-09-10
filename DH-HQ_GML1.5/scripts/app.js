@@ -623,11 +623,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             return {
                 total_pts: allPlayers[playerId].total_pts.toFixed(2),
-                overallRank,
-                posRank,
+                overallRank: overallRank > 999 ? 'NA' : overallRank,
+                posRank: posRank > 999 ? 'NA' : posRank,
                 ppg: allPlayers[playerId].ppg.toFixed(2),
-                ppgOverallRank,
-                ppgPosRank,
+                ppgOverallRank: ppgOverallRank > 999 ? 'NA' : ppgOverallRank,
+                ppgPosRank: ppgPosRank > 999 ? 'NA' : ppgPosRank,
             };
         }
 
@@ -795,6 +795,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             modalPlayerName.textContent = `${playerName}'s Game Logs`;
             document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
+            const existingTag = document.querySelector('.modal-pos-tag');
+            if(existingTag) existingTag.remove();
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
             openModal();
 
@@ -811,34 +813,88 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
+            const modalHeader = document.getElementById('modal-header');
+            const posTag = document.createElement('div');
+            posTag.className = 'player-tag modal-pos-tag';
+            posTag.textContent = player.pos;
+            posTag.style.backgroundColor = TAG_COLORS[player.pos] || 'var(--pos-bn)';
+            modalHeader.insertBefore(posTag, modalHeader.firstChild);
+
             // Render summary chips
             const summaryChipsContainer = document.getElementById('modal-summary-chips');
             summaryChipsContainer.innerHTML = `
                 <div class="summary-chip">
                     <h4>FPTS / PPG</h4>
                     <div class="chip-values">
-                        <span>${playerRanks.total_pts}</span>
+                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.total_pts}</span>
                         <span class="chip-separator">/</span>
-                        <span>${playerRanks.ppg}</span>
+                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppg}</span>
                     </div>
                 </div>
                 <div class="summary-chip">
-                    <h4>OVR RANK</h4>
-                    <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.overallRank)}">${playerRanks.overallRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgOverallRank)}">${playerRanks.ppgOverallRank}</span>
-                    </div>
+                    <h4>FPTS RKs</h4>
+                    <div class="chip-values"></div>
                 </div>
                 <div class="summary-chip">
-                    <h4>POS RANK</h4>
-                    <div class="chip-values">
-                        <span style="color: ${getRankColor(playerRanks.posRank, true)}">${playerRanks.posRank}</span>
-                        <span class="chip-separator">/</span>
-                        <span style="color: ${getRankColor(playerRanks.ppgPosRank, true)}">${playerRanks.ppgPosRank}</span>
-                    </div>
+                    <h4>PPG RKs</h4>
+                    <div class="chip-values"></div>
                 </div>
             `;
+
+            const fptsValues = summaryChipsContainer.children[1].querySelector('.chip-values');
+            const ppgValues = summaryChipsContainer.children[2].querySelector('.chip-values');
+
+            // Populate FPTS RKs chip
+            if (playerRanks.overallRank === 'NA') {
+                fptsValues.innerHTML = '<span>NA</span>';
+            } else {
+                const overallRankSpan = document.createElement('span');
+                overallRankSpan.style.color = getRankColor(playerRanks.overallRank);
+                overallRankSpan.textContent = `#${playerRanks.overallRank}`;
+
+                const separatorSpan = document.createElement('span');
+                separatorSpan.className = 'chip-separator';
+                separatorSpan.textContent = ' / ';
+
+                const posRankContainer = document.createElement('span');
+
+                const posTextSpan = document.createElement('span');
+                posTextSpan.style.color = getPosRankColor(player.pos);
+                posTextSpan.textContent = `${player.pos}·`;
+
+                const posRankSpan = document.createElement('span');
+                posRankSpan.style.color = getGameLogPosRankColor(player.pos, playerRanks.posRank);
+                posRankSpan.textContent = playerRanks.posRank;
+
+                posRankContainer.append(posTextSpan, posRankSpan);
+                fptsValues.append(overallRankSpan, separatorSpan, posRankContainer);
+            }
+
+            // Populate PPG RKs chip
+            if (playerRanks.ppgOverallRank === 'NA') {
+                ppgValues.innerHTML = '<span>NA</span>';
+            } else {
+                const overallRankSpan = document.createElement('span');
+                overallRankSpan.style.color = getRankColor(playerRanks.ppgOverallRank);
+                overallRankSpan.textContent = `#${playerRanks.ppgOverallRank}`;
+
+                const separatorSpan = document.createElement('span');
+                separatorSpan.className = 'chip-separator';
+                separatorSpan.textContent = ' / ';
+
+                const posRankContainer = document.createElement('span');
+
+                const posTextSpan = document.createElement('span');
+                posTextSpan.style.color = getPosRankColor(player.pos);
+                posTextSpan.textContent = `${player.pos}·`;
+
+                const posRankSpan = document.createElement('span');
+                posRankSpan.style.color = getGameLogPosRankColor(player.pos, playerRanks.ppgPosRank);
+                posRankSpan.textContent = playerRanks.ppgPosRank;
+
+                posRankContainer.append(posTextSpan, posRankSpan);
+                ppgValues.append(overallRankSpan, separatorSpan, posRankContainer);
+            }
 
             if (!gameLogs || gameLogs.length === 0) {
                 modalBody.innerHTML = `<p class="no-logs">No game logs found for ${playerName} for the current season.</p>`;
@@ -862,7 +918,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 relevantStats['ypc'] = 'YPC';
             }
 
-            let tableHTML = '<table><thead><tr><th>Wk</th>';
+            let tableHTML = '<div class="game-logs-table-container"><table><thead><tr><th>Wk</th>';
             const statKeys = Object.keys(relevantStats);
 
             for (const key of statKeys) {
@@ -900,7 +956,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 }
             });
 
-            tableHTML += '</tbody></table>';
+            tableHTML += '</tbody></table></div>';
 
             modalBody.innerHTML = tableHTML;
         }
@@ -1423,10 +1479,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (!posRank || typeof posRank !== 'string') return 'var(--color-text-secondary)';
             const position = posRank.split('·')[0];
             const colors = {
-                QB: '#FF7AB2',
+                QB: '#FFB2D8',
                 RB: '#bbf7e0',
                 WR: '#A0C2F7',
-                TE: '#ffae58'
+                TE: '#FFC78A'
             };
             return colors[position] || 'var(--color-text-secondary)';
         }
@@ -1442,15 +1498,69 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             return totalPoints;
         }
 
-        function getRankColor(rank, isPositional = false) {
+        function getRankColor(rank) {
             if (typeof rank !== 'number') return 'var(--color-text-primary)';
-            const thresholds = isPositional
-                ? [{ v: 5, c: '#00EEB6' }, { v: 12, c: '#14D7CB' }, { v: 24, c: '#0599AA' }, { v: 36, c: '#03a8ce' }]
-                : [{ v: 10, c: '#00EEB6' }, { v: 25, c: '#14D7CB' }, { v: 50, c: '#0599AA' }, { v: 100, c: '#03a8ce' }];
+            const thresholds = [
+                { v: 24, c: '#00ffc4' },
+                { v: 48, c: '#85fff3' },
+                { v: 72, c: '#7dd1ff' },
+                { v: 96, c: '#48a6ff' },
+                { v: 120, c: '#957cff' },
+                { v: 156, c: '#a642ff' },
+                { v: 180, c: '#cf60ff' },
+                { v: 204, c: '#ff6fe1' },
+                { v: 250, c: '#ff2eb2' },
+            ];
 
             for (const t of thresholds) {
                 if (rank <= t.v) return t.c;
             }
+
+            if (rank > 250 && rank < 300) return '#ff0080';
+            if (rank >= 300) return '#656565';
+
+            return 'var(--color-text-secondary)';
+        }
+        function getGameLogPosRankColor(pos, rank) {
+            if (typeof rank !== 'number') return 'var(--color-text-primary)';
+
+            const wrThresholds = [
+                { v: 6, c: '#00ffc4' },
+                { v: 12, c: '#85fff3' },
+                { v: 18, c: '#7dd1ff' },
+                { v: 24, c: '#48a6ff' },
+                { v: 36, c: '#957cff' },
+                { v: 48, c: '#a642ff' },
+                { v: 60, c: '#cf60ff' },
+                { v: 72, c: '#ff6fe1' },
+                { v: 84, c: '#ff2eb2' },
+            ];
+
+            const otherThresholds = [
+                { v: 4, c: '#00ffc4' },
+                { v: 8, c: '#85fff3' },
+                { v: 12, c: '#7dd1ff' },
+                { v: 18, c: '#48a6ff' },
+                { v: 24, c: '#957cff' },
+                { v: 30, c: '#a642ff' },
+                { v: 36, c: '#ff6fe1' },
+                { v: 48, c: '#ff2eb2' },
+            ];
+
+            const thresholds = pos === 'WR' ? wrThresholds : otherThresholds;
+
+            for (const t of thresholds) {
+                if (rank <= t.v) return t.c;
+            }
+
+            if (pos === 'WR') {
+                if (rank > 84 && rank < 96) return '#ff0080';
+                if (rank >= 96) return '#656565';
+            } else {
+                if (rank > 48 && rank < 60) return '#ff0080';
+                if (rank >= 60) return '#656565';
+            }
+
             return 'var(--color-text-secondary)';
         }
         function getKtcColor(v){const s=[{v:9e3,c:"#00EEB6"},{v:8e3,c:"#14D7CB"},{v:7e3,c:"#0599AA"},{v:6e3,c:"#03a8ce"},{v:5500,c:"#0690DC"},{v:5e3,c:"#066CDC"},{v:4500,c:"#1350fd"},{v:4e3,c:"#5e41ff"},{v:3750,c:"#7158ff"},{v:3500,c:"#964eff"},{v:3250,c:"#9200ff"},{v:3e3,c:"#b70fff"},{v:2750,c:"#ba00cc"},{v:2500,c:"#e800ff"},{v:2250,c:"#db00af"},{v:2e3,c:"#c70097"},{v:0,c:"#FF0080"}];if(v===null||v===0)return"#e0e6ed";for(const t of s)if(v>=t.v)return t.c;return s[s.length-1].c}
