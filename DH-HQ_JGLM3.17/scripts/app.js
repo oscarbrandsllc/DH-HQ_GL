@@ -541,99 +541,93 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 return [];
             }
 
-            state.weeklyStats = {}; // Clear previous weekly stats
-            const allWeeklyStats = [];
-
-            for (let week = 1; week <= 18; week++) {
-                try {
-                    const weeklyStats = await fetchWithCache(`${API_BASE}/stats/nfl/regular/${season}/${week}`);
-                    if (Object.keys(weeklyStats).length === 0) {
+            // Efficiently fetch and cache weekly stats for the entire season on the first request
+            if (!state.weeklyStats.season || state.weeklyStats.season !== season) {
+                state.weeklyStats = { season: season }; // Mark the season, clear old stats
+                for (let week = 1; week <= 18; week++) {
+                    try {
+                        const weeklyStatsData = await fetchWithCache(`${API_BASE}/stats/nfl/regular/${season}/${week}`);
+                        if (Object.keys(weeklyStatsData).length === 0) {
+                            break; // No more data for the season
+                        }
+                        state.weeklyStats[week] = weeklyStatsData;
+                    } catch (error) {
                         break;
                     }
-                    state.weeklyStats[week] = weeklyStats; // Store for rank calculation
-
-                    if (weeklyStats[playerId]) {
-                        allWeeklyStats.push({
-                            week: week,
-                            stats: weeklyStats[playerId]
-                        });
-                    }
-                } catch (error) {
-                    break;
                 }
             }
-            return allWeeklyStats;
+
+            // Now, extract just the requested player's logs from the cached data
+            const playerGameLogs = [];
+            for (let week = 1; week <= 18; week++) {
+                if (state.weeklyStats[week] && state.weeklyStats[week][playerId]) {
+                    playerGameLogs.push({
+                        week: week,
+                        stats: state.weeklyStats[week][playerId]
+                    });
+                }
+            }
+            return playerGameLogs;
         }
 
-        function calculatePlayerStatsAndRanks(playerId) {
+        function calculateAndCacheAllPlayerRanks() {
             const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
-            if (!league) return null;
+            if (!league) return;
             const scoringSettings = league.scoring_settings;
-
             const allPlayers = {};
 
-            // Initialize with all players from state.players
             for (const pId in state.players) {
-                allPlayers[pId] = {
-                    total_pts: 0,
-                    games_played: 0,
-                    pos: state.players[pId]?.position || 'N/A'
-                };
+                allPlayers[pId] = { total_pts: 0, games_played: 0, pos: state.players[pId]?.position || 'N/A' };
             }
 
-            // Aggregate stats for players who have scored
             for (const week in state.weeklyStats) {
+                if (week === 'season') continue;
                 const weeklyData = state.weeklyStats[week];
                 for (const pId in weeklyData) {
-                    if (allPlayers[pId]) { // Make sure the player exists in our list
-                        allPlayers[pId].total_pts += calculateFantasyPoints(weeklyData[pId], scoringSettings);
-                        if(calculateFantasyPoints(weeklyData[pId], scoringSettings) > 0) {
-                            allPlayers[pId].games_played += 1;
-                        }
+                    if (allPlayers[pId]) {
+                        const points = calculateFantasyPoints(weeklyData[pId], scoringSettings);
+                        allPlayers[pId].total_pts += points;
+                        if (points > 0) allPlayers[pId].games_played += 1;
                     }
                 }
             }
 
-            // Calculate PPG
             for (const pId in allPlayers) {
                 allPlayers[pId].ppg = allPlayers[pId].games_played > 0 ? allPlayers[pId].total_pts / allPlayers[pId].games_played : 0;
             }
 
-            if (!allPlayers[playerId]) {
-                return {
-                    total_pts: 0,
-                    overallRank: 'N/A',
-                    posRank: 'N/A',
-                    ppg: 0,
-                    ppgOverallRank: 'N/A',
-                    ppgPosRank: 'N/A',
-                }
+            const playerList = Object.entries(allPlayers).map(([id, data]) => ({ id, ...data }));
+            const ranks = {};
+
+            const sortAndRank = (list, key, rankProp) => {
+                list.sort((a, b) => b[key] - a[key]);
+                const posRanks = {};
+                list.forEach((p, index) => {
+                    if (!ranks[p.id]) ranks[p.id] = {};
+                    ranks[p.id][rankProp] = index + 1;
+
+                    const pos = p.pos;
+                    if (!posRanks[pos]) posRanks[pos] = 0;
+                    posRanks[pos]++;
+                    ranks[p.id][`${rankProp}Pos`] = posRanks[pos];
+                });
+            };
+
+            sortAndRank(playerList, 'total_pts', 'overallRank');
+            sortAndRank(playerList, 'ppg', 'ppgOverallRank');
+
+            for (const pId in allPlayers) {
+                if (!ranks[pId]) ranks[pId] = {};
+                ranks[pId].total_pts = allPlayers[pId].total_pts.toFixed(2);
+                ranks[pId].ppg = allPlayers[pId].ppg.toFixed(2);
+                // Ensure ranks are not > 999
+                if(ranks[pId].overallRank > 999) ranks[pId].overallRank = 'NA';
+                if(ranks[pId].overallRankPos > 999) ranks[pId].overallRankPos = 'NA';
+                if(ranks[pId].ppgOverallRank > 999) ranks[pId].ppgOverallRank = 'NA';
+                if(ranks[pId].ppgOverallRankPos > 999) ranks[pId].ppgOverallRankPos = 'NA';
             }
 
-            const playerList = Object.entries(allPlayers).map(([id, data]) => ({ id, ...data }));
-
-            // Sort by total points for overall and positional ranks
-            playerList.sort((a, b) => b.total_pts - a.total_pts);
-            const overallRank = playerList.findIndex(p => p.id === playerId) + 1;
-
-            const posPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
-            const posRank = posPlayers.findIndex(p => p.id === playerId) + 1;
-
-            // Sort by PPG for overall and positional ranks
-            playerList.sort((a, b) => b.ppg - a.ppg);
-            const ppgOverallRank = playerList.findIndex(p => p.id === playerId) + 1;
-
-            const ppgPosPlayers = playerList.filter(p => p.pos === allPlayers[playerId].pos);
-            const ppgPosRank = ppgPosPlayers.findIndex(p => p.id === playerId) + 1;
-
-            return {
-                total_pts: allPlayers[playerId].total_pts.toFixed(2),
-                overallRank: overallRank > 999 ? 'NA' : overallRank,
-                posRank: posRank > 999 ? 'NA' : posRank,
-                ppg: allPlayers[playerId].ppg.toFixed(2),
-                ppgOverallRank: ppgOverallRank > 999 ? 'NA' : ppgOverallRank,
-                ppgPosRank: ppgPosRank > 999 ? 'NA' : ppgPosRank,
-            };
+            state.leagueRanks = { season: state.weeklyStats.season, ranks: ranks };
         }
 
         async function fetchDataFromGoogleSheet() {
@@ -798,15 +792,32 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const fullPlayer = state.players[player.id];
             const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.name;
 
-            modalPlayerName.textContent = `${playerName}`;
-            document.getElementById('modal-summary-chips').innerHTML = ''; // Clear previous chips
+            modalPlayerName.textContent = playerName;
+            document.getElementById('modal-summary-chips').innerHTML = '';
             const existingTag = document.querySelector('.modal-pos-tag');
-            if(existingTag) existingTag.remove();
+            if (existingTag) existingTag.remove();
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
             openModal();
 
             const gameLogs = await fetchGameLogs(player.id);
-            const playerRanks = calculatePlayerStatsAndRanks(player.id);
+
+            if (!state.leagueRanks || state.leagueRanks.season !== state.weeklyStats.season) {
+                calculateAndCacheAllPlayerRanks();
+            }
+
+            const playerRanks = state.leagueRanks.ranks[player.id] || {
+                total_pts: '0.00',
+                overallRank: 'NA',
+                posRank: 'NA',
+                ppg: '0.00',
+                ppgOverallRank: 'NA',
+                ppgPosRank: 'NA',
+            };
+
+            // The positional rank is now stored as 'overallRankPos' and 'ppgOverallRankPos'
+            playerRanks.posRank = playerRanks.overallRankPos;
+            playerRanks.ppgPosRank = playerRanks.ppgOverallRankPos;
+
             renderGameLogs(gameLogs, player, playerRanks);
         }
 
