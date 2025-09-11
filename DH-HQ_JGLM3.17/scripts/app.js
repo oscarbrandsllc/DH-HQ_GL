@@ -1632,10 +1632,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         // --- Utility Functions ---
         function openModal() {
             gameLogsModal.classList.remove('hidden');
+            statsKeyContainer.classList.add('hidden');
         }
 
         function closeModal() {
             gameLogsModal.classList.add('hidden');
+            statsKeyContainer.classList.add('hidden');
         }
 
         function setLoading(isLoading, message = 'Loading...') {
