@@ -856,10 +856,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 separatorSpan.textContent = ' / ';
 
                 const posRankContainer = document.createElement('span');
+                posRankContainer.className = 'pos-rank-container';
 
                 const posTextSpan = document.createElement('span');
+                posTextSpan.className = 'chip-pos-rank-label';
                 posTextSpan.style.color = getPosRankColor(player.pos);
-                posTextSpan.style.fontWeight = 'normal';
                 posTextSpan.textContent = `${player.pos}·`;
 
                 const posRankSpan = document.createElement('span');
@@ -883,10 +884,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 separatorSpan.textContent = ' / ';
 
                 const posRankContainer = document.createElement('span');
+                posRankContainer.className = 'pos-rank-container';
 
                 const posTextSpan = document.createElement('span');
+                posTextSpan.className = 'chip-pos-rank-label';
                 posTextSpan.style.color = getPosRankColor(player.pos);
-                posTextSpan.style.fontWeight = 'normal';
                 posTextSpan.textContent = `${player.pos}·`;
 
                 const posRankSpan = document.createElement('span');
