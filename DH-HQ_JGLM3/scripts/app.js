@@ -860,9 +860,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                 const posTextSpan = document.createElement('span');
                 posTextSpan.className = `chip-pos-rank-label pos-color-${player.pos}`;
-                posTextSpan.textContent = `${player.pos}•`;
+                posTextSpan.textContent = `${player.pos}`;
 
                 const posRankSpan = document.createElement('span');
+                posRankSpan.className = 'chip-pos-rank-value';
                 posRankSpan.style.color = getGameLogPosRankColor(player.pos, playerRanks.posRank);
                 posRankSpan.textContent = playerRanks.posRank;
 
@@ -887,9 +888,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                 const posTextSpan = document.createElement('span');
                 posTextSpan.className = `chip-pos-rank-label pos-color-${player.pos}`;
-                posTextSpan.textContent = `${player.pos}•`;
+                posTextSpan.textContent = `${player.pos}`;
 
                 const posRankSpan = document.createElement('span');
+                posRankSpan.className = 'chip-pos-rank-value';
                 posRankSpan.style.color = getGameLogPosRankColor(player.pos, playerRanks.ppgPosRank);
                 posRankSpan.textContent = `${playerRanks.ppgPosRank}`;
 
