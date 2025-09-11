@@ -2242,7 +2242,9 @@ font-weight: 500 !important;
       max-width: 90%;
       width: 600px;
       max-height: 80vh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
       transform: scale(0.95);
       opacity: 0;
       transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
@@ -2334,36 +2336,39 @@ font-weight: 500 !important;
     #modal-body {
       color: var(--color-text-secondary);
       overflow-x: auto;
+      overflow-y: auto;
       border-radius: 8px;
-      
+      position: relative;
+      background: rgba(255, 255, 255, 0.005);
+      backdrop-filter: blur(3px) saturate(170%);
+      border: 1px solid rgba(250, 250, 250, 0.06);
+      box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2), inset 0 4px 20px rgba(255, 255, 255, 0.05);
+      flex: 1;
+      scrollbar-width: none;
     }
-    
-    .modal-body{
-        position: relative;
-        background: rgba(255, 255, 255, 0.005);
-        backdrop-filter: blur(3px) saturate(170%);
-        border: 1px solid rgba(250, 250, 250, 0.06);
-        border-radius: 8px;
-        box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2), inset 0 4px 20px rgba(255, 255, 255, 0.05);
-        }
 
-    .modal-body::after {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(255, 255, 255, 0.01);
-        border-radius: 8px;
-        backdrop-filter: blur(3px);
-        box-shadow: inset 7.5px 10px 0px -11px rgba(255, 255, 255, .25),
-        inset 0px 10px 0px -8px rgba(255, 255, 255, .01);
-        opacity: 0.4;
-        z-index: -1;
-        filter: blur(2px) drop-shadow(10px 4px 6px black) brightness(115%);
-        pointer-events: none;
-        }        
+    #modal-body::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.01);
+      border-radius: 8px;
+      backdrop-filter: blur(3px);
+      box-shadow: inset 7.5px 10px 0px -11px rgba(255, 255, 255, .25),
+                  inset 0px 10px 0px -8px rgba(255, 255, 255, .01);
+      opacity: 0.4;
+      z-index: -1;
+      filter: blur(2px) drop-shadow(10px 4px 6px black) brightness(115%);
+      pointer-events: none;
+    }
+
+    #modal-body::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
 
     
     
@@ -2400,17 +2405,23 @@ font-weight: 500 !important;
     #modal-header {
       text-align: center;
     }
-    
+
     #modal-player-name {
       text-align: center;
       margin-bottom: 1rem;
     }
-    
-    #modal-summary-chips {
+
+    #modal-summary-wrapper {
       display: flex;
       justify-content: center;
+      align-items: center;
       gap: 1rem;
       margin-bottom: 0.75rem;
+    }
+
+    #modal-summary-chips {
+      display: flex;
+      gap: 1rem;
       flex-wrap: nowrap;
     }
     
@@ -2497,10 +2508,8 @@ font-weight: 500 !important;
       text-align: center;
     }
 
+
 .modal-info-btn {
-    position: absolute;
-    top: 0.8rem;
-    right: 4.5rem;
     font-size: 1.1rem;
     color: var(--color-text-secondary);
     cursor: pointer;
