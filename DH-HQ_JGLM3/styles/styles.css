@@ -2454,10 +2454,10 @@ font-weight: 500 !important;
     }
 
     .chip-pos-rank-value {
-        font-size: 0.65em;
+        font-size: 0.75em;
         line-height: 1;
         margin-left: 0.05rem;
-        transform: translateY(-0.2em);
+        transform: translateY(-0.1em);
     }
 
     .pos-color-QB { color: #FFB2D8BB; }
