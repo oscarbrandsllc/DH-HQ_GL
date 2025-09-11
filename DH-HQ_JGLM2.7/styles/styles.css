@@ -2415,6 +2415,13 @@ font-weight: 500 !important;
         font-size: 0.8rem;
         font-weight: 400;
     }
+
+    .chip-pos-rank-label {
+        font-size: 0.7em;
+        color: var(--color-text-tertiary);
+        font-weight: 400;
+        margin-right: 0.1rem;
+    }
     
     #modal-body th:first-child, #modal-body td:first-child {
       font-weight: 700;
