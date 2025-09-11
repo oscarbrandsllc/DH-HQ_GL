@@ -2415,6 +2415,22 @@ font-weight: 500 !important;
         font-size: 0.8rem;
         font-weight: 400;
     }
+
+    .chip-pos-rank-label {
+        font-size: 0.7em;
+        font-weight: 400;
+        margin-right: 0.1rem;
+    }
+
+    .pos-rank-container {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .pos-color-QB { color: #FFB2D8; }
+    .pos-color-RB { color: #bbf7e0; }
+    .pos-color-WR { color: #A0C2F7; }
+    .pos-color-TE { color: #FFC78A; }
     
     #modal-body th:first-child, #modal-body td:first-child {
       font-weight: 700;
