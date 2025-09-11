@@ -28,10 +28,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const pageType = document.body.dataset.page || 'welcome';
 
         const gameLogsModal = document.getElementById('game-logs-modal');
-        const modalCloseBtn = document.querySelector('.modal-close-btn');
-        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalCloseBtn = gameLogsModal.querySelector('.modal-close-btn');
+        const modalOverlay = gameLogsModal.querySelector('.modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+
+        const statsKeyModal = document.getElementById('stats-key-modal');
+        const statsKeyTrigger = document.querySelector('.stats-key-trigger');
+        const statsKeyCloseBtn = statsKeyModal.querySelector('.modal-close-btn');
+        const statsKeyOverlay = statsKeyModal.querySelector('.modal-overlay');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -185,7 +190,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
                     }
+                    if (e.key === 'Escape' && !statsKeyModal.classList.contains('hidden')) {
+                        closeStatsKeyModal();
+                    }
                 });
+            }
+            if (statsKeyModal) {
+                statsKeyTrigger.addEventListener('click', () => openStatsKeyModal());
+                statsKeyCloseBtn.addEventListener('click', () => closeStatsKeyModal());
+                statsKeyOverlay.addEventListener('click', () => closeStatsKeyModal());
             }
         }
         
@@ -917,6 +930,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 'rush_fd': 'ru1D',
                 'rush_btkl': 'BTKL',
                 'rush_yac': 'YCO',
+                'yco_per_car': 'YCO/CAR',
+                'btkl_per_car': 'BTKL/CAR',
                 'rec_tgt': 'TGT',
                 'rec': 'REC',
                 'rec_yd': 'recYDS',
@@ -927,7 +942,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             };
 
             const qbStatOrder = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
-            const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 
+            const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd',
             'rec_yar', 'fum_lost'];
             const wrTeStatOrder = ['fpts', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
 
@@ -964,13 +979,34 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                         const rushYds = weekStats.stats['rush_yd'] || 0;
                         const rushAtt = weekStats.stats['rush_att'] || 0;
                         value = rushAtt > 0 ? (rushYds / rushAtt) : 0;
+                    } else if (key === 'yco_per_car') {
+                        const rushYac = weekStats.stats['rush_yac'] || 0;
+                        const rushAtt = weekStats.stats['rush_att'] || 0;
+                        value = rushAtt > 0 ? (rushYac / rushAtt) : 0;
+                    } else if (key === 'btkl_per_car') {
+                        const rushBtkl = weekStats.stats['rush_btkl'] || 0;
+                        const rushAtt = weekStats.stats['rush_att'] || 0;
+                        value = rushAtt > 0 ? (rushBtkl / rushAtt) : 0;
                     } else {
                         value = weekStats.stats[key] || 0;
                     }
 
                     if (value > 0) hasData = true;
-                    // Ensure value is a number before calling toFixed, otherwise just display it.
-                    const displayValue = typeof value === 'number' ? value.toFixed(2).replace(/\.00$/, '') : (value || '0');
+
+                    let displayValue;
+                    if (typeof value !== 'number') {
+                        displayValue = value || '0';
+                    } else {
+                        if (key === 'yco_per_car') {
+                            displayValue = value.toFixed(1);
+                        } else if (key === 'btkl_per_car') {
+                            displayValue = value.toFixed(2);
+                        } else if (key === 'ypc') {
+                            displayValue = value.toFixed(2);
+                        } else {
+                            displayValue = value.toFixed(2).replace(/\.00$/, '');
+                        }
+                    }
                     rowHTML += `<td>${displayValue}</td>`;
                 }
 
@@ -1608,6 +1644,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function closeModal() {
             gameLogsModal.classList.add('hidden');
+        }
+
+        function openStatsKeyModal() {
+            statsKeyModal.classList.remove('hidden');
+        }
+
+        function closeStatsKeyModal() {
+            statsKeyModal.classList.add('hidden');
         }
 
         function setLoading(isLoading, message = 'Loading...') {
