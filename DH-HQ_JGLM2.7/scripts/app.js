@@ -856,6 +856,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 separatorSpan.textContent = ' / ';
 
                 const posRankContainer = document.createElement('span');
+                posRankContainer.className = 'pos-rank-container';
 
                 const posTextSpan = document.createElement('span');
                 posTextSpan.style.color = getPosRankColor(player.pos);
@@ -883,6 +884,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 separatorSpan.textContent = ' / ';
 
                 const posRankContainer = document.createElement('span');
+                posRankContainer.className = 'pos-rank-container';
 
                 const posTextSpan = document.createElement('span');
                 posTextSpan.style.color = getPosRankColor(player.pos);
