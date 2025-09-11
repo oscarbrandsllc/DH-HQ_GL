@@ -1631,10 +1631,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         // --- Utility Functions ---
         function openModal() {
+            statsKeyContainer?.classList.add('hidden');
             gameLogsModal.classList.remove('hidden');
         }
 
         function closeModal() {
+            statsKeyContainer?.classList.add('hidden');
             gameLogsModal.classList.add('hidden');
         }
 
