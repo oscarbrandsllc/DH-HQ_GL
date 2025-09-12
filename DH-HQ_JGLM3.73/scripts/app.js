@@ -803,6 +803,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const existingTag = document.querySelector('.modal-pos-tag');
             if(existingTag) existingTag.remove();
             modalBody.innerHTML = '<p class="text-center p-4">Loading game logs...</p>';
+            if (modalBody) {
+                modalBody.scrollLeft = 0;
+            }
             openModal();
 
             const gameLogs = await fetchGameLogs(player.id);
