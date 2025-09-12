@@ -2650,3 +2650,76 @@ font-weight: 500 !important;
     display: inline-block;
     width: 70px;
 }
+
+/* Player Comparison Modal */
+#player-comparison-modal .modal-content {
+    width: 95%;
+    max-width: 1200px;
+}
+
+.player-comparison-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.comparison-header-row, .comparison-summary-chips-row {
+    display: grid;
+    grid-template-columns: 100px repeat(4, 1fr);
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.player-header {
+    text-align: center;
+}
+
+.player-header h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.player-pos-team {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.summary-chips-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.player-comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+}
+
+.player-comparison-table th, .player-comparison-table td {
+    padding: 0.25rem;
+    text-align: center;
+    border: 1px solid var(--color-panel-border);
+    white-space: nowrap;
+}
+
+.player-comparison-table th {
+    font-weight: 700;
+}
+
+.player-separator-row {
+    background-color: var(--color-bg-light);
+    font-weight: 700;
+    text-align: left !important;
+    padding-left: 1rem !important;
+}
+
+.player-comparison-table tbody tr:nth-child(odd) {
+    background-color: rgba(255, 255, 255, 0.03);
+}
+
+.player-comparison-table .best-stat {
+    color: var(--color-accent-trade-win);
+    font-weight: 700;
+}
