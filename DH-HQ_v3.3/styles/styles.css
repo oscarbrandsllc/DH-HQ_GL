@@ -2208,9 +2208,25 @@ font-weight: 500 !important;
   display: inline-block;     /* override any global svg { display:block } */
   width: 1.1em;                /* icon scales with h3 font-size */
   height: 1.1em;
-  vertical-align: middle; 
+  vertical-align: middle;
   margin-right: 0px;   /* tidy baseline */
 }
+
+/* Player comparison modal */
+.player-compare-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.6);
+  z-index: 9999;
+}
+.player-compare-modal.hidden { display: none; }
+.pcm-content { font-size: 0.75rem; padding: 0.5rem; width: 100%; max-width: 420px; border-radius: var(--panel-border-radius); }
+.pcm-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem; }
+.pcm-body table { width: 100%; border-collapse: collapse; font-size: 0.7rem; }
+.pcm-body th, .pcm-body td { padding: 2px 4px; text-align: center; }
 
   /* · · Center collapse icon: forced horizontal stretch via CSS sizing + preserveAspectRatio="none" · · */
 

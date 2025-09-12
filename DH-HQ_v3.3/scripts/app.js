@@ -107,7 +107,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         });
 
         // --- State ---
-        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false };
+        let state = { userId: null, leagues: [], players: {}, oneQbData: {}, sflxData: {}, currentLeagueId: null, isSuperflex: false, cache: {}, teamsToCompare: new Set(), isCompareMode: false, currentRosterView: 'positional', activePositions: new Set(), tradeBlock: {}, isTradeCollapsed: false, rankings: null };
         const assignedLeagueColors = new Map();
         let nextColorIndex = 0;
         const assignedRyColors = new Map();
@@ -917,15 +917,22 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="comparePlayersButton" disabled><i class="fa-solid fa-people-arrows"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
-        
+
           <div class="trade-body"></div>
           <div class="trade-footnote">• Non-Adjusted Values •</div>
         </div>
-        
+
         <button id="showTradeButton"><i class="fa-solid fa-circle-chevron-up"></i> Trade Preview <i class="fa-solid fa-circle-chevron-up"></i></button>
+        <div id="playerCompareModal" class="player-compare-modal hidden">
+          <div class="pcm-content glass-panel">
+            <div class="pcm-header"><h4>Player Comparison</h4><button id="closeCompareModal"><i class="fa-solid fa-xmark"></i></button></div>
+            <div id="pcmBody" class="pcm-body"></div>
+          </div>
+        </div>
   `;
 
             const tradeBody = tradeSimulator.querySelector('.trade-body');
@@ -937,6 +944,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 const totalKtc = assets.reduce((sum, asset) => sum + asset.ktc, 0);
                 tradeData[name] = { assets, totalKtc };
             });
+
+            const compareBtn = document.getElementById('comparePlayersButton');
+            const selectedPlayers = [];
+            teamNames.forEach(n => {
+                (tradeData[n].assets || []).forEach(a => {
+                    if (a.pos && a.pos !== 'DP') selectedPlayers.push(a);
+                });
+            });
+            if (compareBtn) {
+                compareBtn.disabled = selectedPlayers.length < 2 || selectedPlayers.length > 4;
+                compareBtn.onclick = () => openCompareModal(selectedPlayers);
+                document.getElementById('closeCompareModal')?.addEventListener('click', closeCompareModal);
+            }
 
             const totals = teamNames.map(name => tradeData[name].totalKtc);
             const totalClasses = {};
@@ -1017,6 +1037,59 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
 
             mainContent.style.paddingBottom = `${tradeSimulator.offsetHeight + 20}px`;
+        }
+
+        function closeCompareModal() {
+            document.getElementById('playerCompareModal')?.classList.add('hidden');
+        }
+
+        function getFptsFromPlayer(p) {
+            return p.fpts ?? p.fpts_ppr ?? p.fp ?? p.stats?.pts_ppr ?? p.stats?.ppr ?? null;
+        }
+
+        function getGamesFromPlayer(p) {
+            return p.gp ?? p.games_played ?? p.stats?.gp ?? p.stats?.games ?? null;
+        }
+
+        function ensureRankingsComputed() {
+            if (state.rankings) return;
+            const arr = [];
+            for (const id in state.players) {
+                const p = state.players[id];
+                const fpts = getFptsFromPlayer(p);
+                const gp = getGamesFromPlayer(p);
+                if (fpts != null) {
+                    arr.push({ id, pos: p.position, fpts, ppg: gp ? fpts / gp : null });
+                }
+            }
+            arr.sort((a, b) => (b.fpts || 0) - (a.fpts || 0));
+            arr.forEach((p, i) => p.fptsRank = i + 1);
+            const byPpg = [...arr].sort((a, b) => (b.ppg || 0) - (a.ppg || 0));
+            byPpg.forEach((p, i) => { const obj = arr.find(o => o.id === p.id); if (obj) obj.ppgRank = i + 1; });
+            const posGroups = {};
+            arr.forEach(p => { (posGroups[p.pos] = posGroups[p.pos] || []).push(p); });
+            Object.values(posGroups).forEach(g => {
+                g.sort((a, b) => (b.fpts || 0) - (a.fpts || 0));
+                g.forEach((p, i) => p.fptsPosRank = i + 1);
+                const gPpg = [...g].sort((a, b) => (b.ppg || 0) - (a.ppg || 0));
+                gPpg.forEach((p, i) => { const obj = g.find(o => o.id === p.id); if (obj) obj.ppgPosRank = i + 1; });
+            });
+            state.rankings = {};
+            arr.forEach(p => { state.rankings[p.id] = p; });
+        }
+
+        function openCompareModal(selectedPlayers) {
+            ensureRankingsComputed();
+            const modal = document.getElementById('playerCompareModal');
+            const body = document.getElementById('pcmBody');
+            if (!modal || !body) return;
+            let rows = '';
+            selectedPlayers.slice(0, 4).forEach(player => {
+                const r = state.rankings?.[player.id] || {};
+                rows += `<tr><th>${player.label}</th><td>${r.fpts?.toFixed ? r.fpts.toFixed(1) : (r.fpts ?? '?')}</td><td>${r.ppg?.toFixed ? r.ppg.toFixed(2) : (r.ppg ?? '?')}</td><td>${r.fptsRank ?? '?'}</td><td>${r.ppgRank ?? '?'}</td><td>${r.fptsPosRank ?? '?'}</td><td>${r.ppgPosRank ?? '?'}</td></tr>`;
+            });
+            body.innerHTML = `<table><thead><tr><th>Player</th><th>FPTS</th><th>PPG</th><th>FPTS RK</th><th>PPG RK</th><th>FPTS POS</th><th>PPG POS</th></tr></thead><tbody>${rows}</tbody></table>`;
+            modal.classList.remove('hidden');
         }
 
 
