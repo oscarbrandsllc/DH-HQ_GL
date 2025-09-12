@@ -27,6 +27,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const mainContent = document.getElementById('content');
         const pageType = document.body.dataset.page || 'welcome';
 
+        // --- Compare Modal ---
+        const compareModal = document.createElement('div');
+        compareModal.id = 'compareModal';
+        compareModal.className = 'hidden';
+        document.body.appendChild(compareModal);
+
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -448,6 +454,90 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             state.tradeBlock = {};
             document.querySelectorAll('.player-selected').forEach(el => el.classList.remove('player-selected'));
             renderTradeBlock();
+        }
+
+        function gatherTradePlayers() {
+            const ids = [];
+            Object.values(state.tradeBlock).forEach(arr => {
+                arr.forEach(a => {
+                    if (a.id && a.pos && state.players[a.id]) {
+                        ids.push(a.id);
+                    }
+                });
+            });
+            return Array.from(new Set(ids));
+        }
+
+        async function openTradeCompare() {
+            const playerIds = gatherTradePlayers();
+            if (playerIds.length < 2) {
+                alert('Select at least two players to compare.');
+                return;
+            }
+            const ids = playerIds.slice(0, 4);
+            try {
+                const stats = await fetchSeasonStats(ids);
+                renderTradeCompareModal(ids, stats);
+            } catch (e) {
+                console.error('Failed to fetch comparison stats:', e);
+            }
+        }
+
+        async function fetchSeasonStats(playerIds) {
+            const season = new Date().getFullYear() - 1;
+            const params = playerIds.map(id => `player_id=${id}`).join('&');
+            const url = `${API_BASE}/stats/nfl/regular/${season}?${params}`;
+            return await fetchWithCache(url);
+        }
+
+        function renderTradeCompareModal(playerIds, statsData) {
+            const statRows = [
+                { label: 'FPTS', get: s => s?.pts_ppr },
+                { label: 'PPG', get: s => {
+                    if (!s) return null;
+                    const gp = s.games_played || s.gp || s.games || 0;
+                    return gp ? (s.pts_ppr / gp).toFixed(1) : null;
+                }},
+                { label: 'FPTS Ovr Rk', get: s => s?.pts_ppr_rank },
+                { label: 'PPG Ovr Rk', get: s => s?.ppg_ppr_rank },
+                { label: 'FPTS Pos Rk', get: s => s?.pts_ppr_pos_rank },
+                { label: 'PPG Pos Rk', get: s => s?.ppg_ppr_pos_rank }
+            ];
+
+            let header = '<tr><th>Stat</th>';
+            playerIds.forEach(id => {
+                const p = state.players[id] || {};
+                const name = p.full_name || (p.first_name && p.last_name ? `${p.first_name} ${p.last_name}` : id);
+                header += `<th>${name}</th>`;
+            });
+            header += '</tr>';
+
+            const body = statRows.map(row => {
+                let rowHtml = `<tr><td>${row.label}</td>`;
+                playerIds.forEach(id => {
+                    const val = row.get(statsData?.[id]);
+                    rowHtml += `<td>${val ?? '—'}</td>`;
+                });
+                rowHtml += '</tr>';
+                return rowHtml;
+            }).join('');
+
+            compareModal.innerHTML = `
+                <div class="compare-modal-content glass-panel">
+                    <div class="compare-modal-header">
+                        <h3>Player Comparison</h3>
+                        <button id="closeCompareModal"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="compare-modal-body">
+                        <table>${header}${body}</table>
+                    </div>
+                </div>
+            `;
+            compareModal.classList.remove('hidden');
+
+            const close = () => compareModal.classList.add('hidden');
+            compareModal.addEventListener('click', e => { if (e.target === compareModal) close(); });
+            document.getElementById('closeCompareModal').addEventListener('click', close);
         }
 
 
@@ -917,6 +1007,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="comparePlayersButton" title="Compare Players"><i class="fa-solid fa-people-arrows"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
@@ -994,17 +1085,21 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             
             tradeBody.innerHTML = bodyHtml;
 
-            // Disable/enable Clear button based on whether any assets are selected
+            // Disable/enable buttons based on selections
             const clearBtn = document.getElementById('clearTradeButton');
+            const compareBtn = document.getElementById('comparePlayersButton');
             try {
+                const selectedPlayers = gatherTradePlayers();
                 const hasAnyAssets = Object.values(tradeData).some(d => Array.isArray(d.assets) && d.assets.length > 0);
                 if (clearBtn) clearBtn.disabled = !hasAnyAssets;
+                if (compareBtn) compareBtn.disabled = selectedPlayers.length < 2;
             } catch (e) { /* no-op */ }
 
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
 
             document.getElementById('clearTradeButton').addEventListener('click', clearTrade);
+            document.getElementById('comparePlayersButton').addEventListener('click', openTradeCompare);
             document.getElementById('collapseTradeButton').addEventListener('click', () => {
                 tradeSimulator.classList.add('collapsed');
                 state.isTradeCollapsed = true;

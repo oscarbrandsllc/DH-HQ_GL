@@ -885,8 +885,30 @@
             border-color: var(--color-panel-border);
             cursor: not-allowed;
             pointer-events: none;
-    }
-    
+        }
+
+        #comparePlayersButton {
+            background: #1E1F3000;
+            color: #8787Af;
+            font-size: 0.8rem;
+            padding: 1px 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 5px;
+            margin-right: 3px;
+            border-radius: 6px;
+        }
+        #comparePlayersButton:hover {
+            color: var(--color-text-primary);
+            border-color: var(--color-panel-border-glow);
+        }
+        #comparePlayersButton:disabled {
+            color: #8787Af60 !important;
+            border-color: var(--color-panel-border);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
     /* · · ⌃ SHOW TRADE CONTAINER BUTTON · · */
         #showTradeButton {
             background: #1E1F30da;
@@ -2208,8 +2230,43 @@ font-weight: 500 !important;
   display: inline-block;     /* override any global svg { display:block } */
   width: 1.1em;                /* icon scales with h3 font-size */
   height: 1.1em;
-  vertical-align: middle; 
+  vertical-align: middle;
   margin-right: 0px;   /* tidy baseline */
+}
+
+#compareModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+}
+#compareModal.hidden { display: none; }
+.compare-modal-content {
+    padding: 0.5rem;
+    max-width: 95%;
+    font-size: 0.7rem;
+}
+.compare-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.25rem;
+}
+.compare-modal-body table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+}
+.compare-modal-body th,
+.compare-modal-body td {
+    padding: 0.25rem;
+    text-align: center;
 }
 
   /* · · Center collapse icon: forced horizontal stretch via CSS sizing + preserveAspectRatio="none" · · */
