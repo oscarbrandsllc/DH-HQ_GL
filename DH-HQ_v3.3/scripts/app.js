@@ -917,6 +917,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="comparePlayersButton" title="Compare players"><i class="fa-solid fa-people-arrows"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
@@ -994,6 +995,21 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             
             tradeBody.innerHTML = bodyHtml;
 
+            // Gather up to four players for comparison and wire up the compare button
+            const selectedPlayers = [];
+            teamNames.forEach(name => {
+                (tradeData[name].assets || []).forEach(asset => {
+                    if (asset.pos && asset.pos !== 'DP' && asset.pos !== 'RDP' && selectedPlayers.length < 4) {
+                        selectedPlayers.push(asset);
+                    }
+                });
+            });
+            const compareBtn = document.getElementById('comparePlayersButton');
+            if (compareBtn) {
+                compareBtn.disabled = selectedPlayers.length < 2;
+                compareBtn.onclick = () => openPlayerCompare(selectedPlayers);
+            }
+
             // Disable/enable Clear button based on whether any assets are selected
             const clearBtn = document.getElementById('clearTradeButton');
             try {
@@ -1017,6 +1033,56 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
 
             mainContent.style.paddingBottom = `${tradeSimulator.offsetHeight + 20}px`;
+        }
+
+        function openPlayerCompare(players) {
+            if (!players || players.length < 2) return;
+            let modal = document.getElementById('playerCompareModal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'playerCompareModal';
+                modal.className = 'player-compare-modal';
+                modal.innerHTML = '<div class="player-compare-content"><button class="player-compare-close">&times;</button><table class="player-compare-table"></table></div>';
+                document.body.appendChild(modal);
+                modal.querySelector('.player-compare-close').addEventListener('click', closePlayerCompare);
+                modal.addEventListener('click', e => { if (e.target === modal) closePlayerCompare(); });
+                document.addEventListener('keydown', e => { if (e.key === 'Escape') closePlayerCompare(); });
+            }
+
+            const table = modal.querySelector('.player-compare-table');
+            let headerRow = '<tr><th>Stat</th>';
+            players.forEach(p => { headerRow += `<th>${p.label}</th>`; });
+            headerRow += '</tr>';
+
+            const statRows = [
+                { label: 'FPTS PPG', keys: ['fpts_ppg','ppg','fpts_per_game'] },
+                { label: 'FPTS OVR RK', keys: ['fpts_rank','fpts_ovr_rk'] },
+                { label: 'PPG OVR RK', keys: ['ppg_rank','ppg_ovr_rk'] },
+                { label: 'FPTS POS RK', keys: ['fpts_pos_rank','fpts_ppf_pos_rk'] },
+                { label: 'PPG POS RK', keys: ['ppg_pos_rank','ppf_pos_rk'] }
+            ];
+
+            let bodyHtml = '';
+            statRows.forEach(row => {
+                bodyHtml += `<tr><td>${row.label}</td>`;
+                players.forEach(p => {
+                    const pl = state.players[p.id] || {};
+                    let val = '?';
+                    for (const k of row.keys) {
+                        if (pl[k] != null) { val = pl[k]; break; }
+                        if (pl.stats && pl.stats[k] != null) { val = pl.stats[k]; break; }
+                    }
+                    bodyHtml += `<td>${val}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+            table.innerHTML = headerRow + bodyHtml;
+            modal.style.display = 'flex';
+        }
+
+        function closePlayerCompare() {
+            const modal = document.getElementById('playerCompareModal');
+            if (modal) modal.style.display = 'none';
         }
 
 
