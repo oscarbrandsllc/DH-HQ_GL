@@ -890,6 +890,29 @@
             cursor: not-allowed;
             pointer-events: none;
     }
+
+    /* · · ⇄ COMPARE PLAYERS BUTTON · · */
+        #comparePlayersButton {
+            background: #1E1F3000;
+            color: #8787Af;
+            font-size: 0.8rem;
+            padding: 1px 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 5px;
+            margin-right: 3px;
+            border-radius: 6px;
+        }
+        #comparePlayersButton:hover:not(:disabled) {
+            color: var(--color-text-primary);
+            border-color: var(--color-panel-border-glow);
+        }
+        #comparePlayersButton:disabled {
+            color: #8787Af60 !important;
+            border-color: var(--color-panel-border);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
     
     /* · · ⌃ SHOW TRADE CONTAINER BUTTON · · */
         #showTradeButton {
@@ -2281,6 +2304,76 @@ font-weight: 500 !important;
         border: 1px solid rgba(250, 250, 250, 0.12);
         border-radius: 1rem;
         box-shadow: 0 8px 32px rgba(31, 38, 135, 0.2), inset 0 4px 20px rgba(255, 255, 255, 0.05);
+    }
+
+    /* Player Comparison Modal */
+    #player-compare-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.2s ease-in-out;
+    }
+
+    #player-compare-modal.hidden { display: none; }
+
+    #player-compare-modal .modal-content {
+      max-width: 90%;
+      width: 700px;
+      max-height: 80vh;
+      overflow: auto;
+      font-size: 0.7rem;
+    }
+
+    .compare-summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.25rem;
+      justify-content: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .compare-summary-chip {
+      border: 1px solid var(--color-panel-border);
+      border-radius: 4px;
+      padding: 0.25rem 0.35rem;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .compare-summary-chip h4 {
+      font-size: 0.65rem;
+      margin-bottom: 0.15rem;
+    }
+
+    .compare-summary-chip .chip-values {
+      display: flex;
+      justify-content: center;
+      gap: 0.15rem;
+      font-size: 0.65rem;
+    }
+
+    #player-compare-modal table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.65rem;
+    }
+
+    #player-compare-modal th,
+    #player-compare-modal td {
+      padding: 2px 4px;
+      text-align: center;
+    }
+
+    #player-compare-modal th {
+      position: sticky;
+      top: 0;
+      background: rgba(0,0,0,0.2);
     }
     
      .modal-pos-tag::after {

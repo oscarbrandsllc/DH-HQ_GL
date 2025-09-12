@@ -35,6 +35,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
 
+        const compareModal = document.getElementById('player-compare-modal');
+        const compareModalClose = document.getElementById('compare-modal-close');
+        const compareModalOverlay = document.getElementById('compare-modal-overlay');
+        const compareModalBody = document.getElementById('compare-modal-body');
+        const compareSummaryRow = document.getElementById('compare-summary-row');
+
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
         const dropdownMenu = document.getElementById('dropdown-menu');
@@ -189,6 +195,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
+                    }
+                });
+            }
+
+            if (compareModal) {
+                compareModalClose.addEventListener('click', closeCompareModal);
+                compareModalOverlay.addEventListener('click', closeCompareModal);
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !compareModal.classList.contains('hidden')) {
+                        closeCompareModal();
                     }
                 });
             }
@@ -993,6 +1009,121 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             modalBody.scrollLeft = 0;
         }
 
+        function openCompareModal() {
+            compareModal.classList.remove('hidden');
+        }
+
+        function closeCompareModal() {
+            compareModal.classList.add('hidden');
+        }
+
+        function aggregateSeasonStats(gameLogs, scoringSettings) {
+            const totals = {};
+            gameLogs.forEach(week => {
+                const stats = week.stats || {};
+                for (const k in stats) {
+                    totals[k] = (totals[k] || 0) + stats[k];
+                }
+                totals.fpts = (totals.fpts || 0) + calculateFantasyPoints(stats, scoringSettings);
+            });
+
+            if (totals.rush_att) {
+                totals.ypc = (totals.rush_yd || 0) / totals.rush_att;
+                totals.yco_per_car = (totals.rush_yac || 0) / totals.rush_att;
+                totals.btkl_per_car = (totals.rush_btkl || 0) / totals.rush_att;
+            }
+            return totals;
+        }
+
+        async function renderPlayerComparison(selectedPlayers) {
+            if (!compareModal) return;
+            openCompareModal();
+            compareModalBody.innerHTML = '<p class="text-center p-2">Loading...</p>';
+            compareSummaryRow.innerHTML = '';
+
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return;
+            const scoringSettings = league.scoring_settings;
+
+            const statLabels = {
+                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
+                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
+                'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
+                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM'
+            };
+
+            const qbStatOrder = ['fpts','pass_att','pass_cmp','pass_yd','pass_td','pass_fd','pass_rtg','rush_att','rush_yd','rush_td','ypc','fum_lost'];
+            const rbStatOrder = ['fpts','rush_att','rush_yd','ypc','rush_td','rush_fd','rush_btkl','rush_yac','yco_per_car','btkl_per_car','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','fum_lost'];
+            const wrTeStatOrder = ['fpts','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','rush_att','rush_yd','rush_td','ypc','fum_lost'];
+            const comparisonStatOrder = Array.from(new Set([...qbStatOrder, ...rbStatOrder, ...wrTeStatOrder]));
+
+            const playerData = [];
+
+            for (const asset of selectedPlayers) {
+                const player = state.players[asset.id];
+                const name = player ? `${player.first_name} ${player.last_name}` : asset.label;
+                const gameLogs = await fetchGameLogs(asset.id);
+                const ranks = calculatePlayerStatsAndRanks(asset.id);
+                const totals = aggregateSeasonStats(gameLogs, scoringSettings);
+
+                const chip = document.createElement('div');
+                chip.className = 'compare-summary-chip';
+                chip.innerHTML = `
+                    <h4>${name}</h4>
+                    <div class="chip-values"><span style="color:${getRankColor(ranks.overallRank)}">${ranks.total_pts}</span><span class="chip-separator">/</span><span style="color:${getRankColor(ranks.ppgOverallRank)}">${ranks.ppg}</span></div>
+                    <div class="chip-values"><span style="color:${getRankColor(ranks.overallRank)}">#${ranks.overallRank}</span><span class="chip-separator">/</span><span style="color:${getGameLogPosRankColor(player?.position || '', ranks.posRank)}">${ranks.posRank}</span></div>
+                    <div class="chip-values"><span style="color:${getRankColor(ranks.ppgOverallRank)}">#${ranks.ppgOverallRank}</span><span class="chip-separator">/</span><span style="color:${getGameLogPosRankColor(player?.position || '', ranks.ppgPosRank)}">${ranks.ppgPosRank}</span></div>
+                `;
+                compareSummaryRow.appendChild(chip);
+
+                playerData.push({ name, totals });
+            }
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            const headerRow = document.createElement('tr');
+            const statTh = document.createElement('th');
+            statTh.textContent = 'STAT';
+            headerRow.appendChild(statTh);
+            playerData.forEach(p => {
+                const th = document.createElement('th');
+                th.textContent = p.name;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+
+            comparisonStatOrder.forEach(key => {
+                if (!statLabels[key]) return;
+                const row = document.createElement('tr');
+                const labelTd = document.createElement('td');
+                labelTd.textContent = statLabels[key];
+                row.appendChild(labelTd);
+
+                playerData.forEach(p => {
+                    let value = p.totals[key] || 0;
+                    if (key === 'ypc') value = p.totals.rush_att ? (p.totals.rush_yd || 0) / p.totals.rush_att : 0;
+                    if (key === 'yco_per_car') value = p.totals.rush_att ? (p.totals.rush_yac || 0) / p.totals.rush_att : 0;
+                    if (key === 'btkl_per_car') value = p.totals.rush_att ? (p.totals.rush_btkl || 0) / p.totals.rush_att : 0;
+                    let displayValue;
+                    if (typeof value !== 'number') displayValue = value;
+                    else if (['ypc','yco_per_car','btkl_per_car'].includes(key)) displayValue = value.toFixed(2);
+                    else displayValue = value.toFixed(2).replace(/\.00$/, '');
+                    const td = document.createElement('td');
+                    td.textContent = displayValue;
+                    row.appendChild(td);
+                });
+
+                tbody.appendChild(row);
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            compareModalBody.innerHTML = '';
+            compareModalBody.appendChild(table);
+        }
+
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
             leagues.forEach(l => {
@@ -1249,6 +1380,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="comparePlayersButton" disabled><i class="fa-solid fa-table-columns"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
@@ -1326,17 +1458,29 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             
             tradeBody.innerHTML = bodyHtml;
 
-            // Disable/enable Clear button based on whether any assets are selected
             const clearBtn = document.getElementById('clearTradeButton');
+            const compareBtn = document.getElementById('comparePlayersButton');
             try {
                 const hasAnyAssets = Object.values(tradeData).some(d => Array.isArray(d.assets) && d.assets.length > 0);
                 if (clearBtn) clearBtn.disabled = !hasAnyAssets;
             } catch (e) { /* no-op */ }
 
+            const selectedPlayers = [];
+            teamNames.forEach(name => {
+                (tradeData[name].assets || []).forEach(a => { if (a.pos) selectedPlayers.push(a); });
+            });
+            if (compareBtn) compareBtn.disabled = selectedPlayers.length < 2;
+
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
 
             document.getElementById('clearTradeButton').addEventListener('click', clearTrade);
+            if (compareBtn) {
+                compareBtn.addEventListener('click', () => {
+                    if (compareBtn.disabled) return;
+                    renderPlayerComparison(selectedPlayers.slice(0,4));
+                });
+            }
             document.getElementById('collapseTradeButton').addEventListener('click', () => {
                 tradeSimulator.classList.add('collapsed');
                 state.isTradeCollapsed = true;
