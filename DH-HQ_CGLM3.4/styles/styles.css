@@ -2326,7 +2326,7 @@ font-weight: 500 !important;
       font-size: 1.4rem;
       font-weight: 300;
       color: var(--color-text-primary);
-      margin-bottom: 1rem;
+      margin-bottom: 0.25rem;
       text-align: center;
     }
     
@@ -2418,7 +2418,7 @@ font-weight: 500 !important;
     
     #modal-player-name {
       text-align: center;
-      margin-bottom: 1rem;
+      margin-bottom: 0.25rem;
     }
     
     #modal-summary-row {
@@ -2519,11 +2519,13 @@ font-weight: 500 !important;
     }
 
 .modal-info-btn {
-    font-size: 1.1rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: color 0.2s ease;
-    margin-left: 6px;
+    display: block;
+    margin: 0 auto 0.25rem;
+    line-height: 1;
 }
 
 .modal-info-btn:hover {
@@ -2554,11 +2556,11 @@ font-weight: 500 !important;
 .stats-key-panel ul {
     list-style: none;
     margin: 0 auto;
-    padding: 0rem 1rem 0rem 1rem;
+    padding: 0 0.5rem;
     display: grid;
-    grid-template-columns: max-content max-content;
-    column-gap: 1.5rem;
-    row-gap: -1rem;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
 }
 
 .stats-key-panel li {
@@ -2576,7 +2578,13 @@ font-weight: 500 !important;
 .stats-key-panel strong {
     color: var(--color-text-primary);
     font-weight: 600;
-    margin-right: 0.5em;
+    margin-right: 0.3em;
     display: inline-block;
-    width: 70px;
+    min-width: 3.5rem;
+}
+
+@media (max-width: 480px) {
+    .stats-key-panel ul {
+        column-gap: 0.5rem;
+    }
 }
