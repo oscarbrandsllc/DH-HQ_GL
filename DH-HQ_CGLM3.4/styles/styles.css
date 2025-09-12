@@ -2414,6 +2414,9 @@ font-weight: 500 !important;
     
     #modal-header {
       text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
     }
     
     #modal-player-name {
@@ -2519,11 +2522,12 @@ font-weight: 500 !important;
     }
 
 .modal-info-btn {
-    font-size: 1.1rem;
+    font-size: 0.75rem;
     color: var(--color-text-secondary);
     cursor: pointer;
     transition: color 0.2s ease;
-    margin-left: 6px;
+    margin: -0.25rem auto 0.25rem;
+    line-height: 1;
 }
 
 .modal-info-btn:hover {
@@ -2536,7 +2540,7 @@ font-weight: 500 !important;
     border-radius: var(--card-border-radius);
     padding: 1rem;
     margin-top: 1rem;
-    max-height: 20vh;
+    max-height: 30vh;
     overflow-y: auto;
 }
 
@@ -2554,11 +2558,11 @@ font-weight: 500 !important;
 .stats-key-panel ul {
     list-style: none;
     margin: 0 auto;
-    padding: 0rem 1rem 0rem 1rem;
+    padding: 0;
     display: grid;
-    grid-template-columns: max-content max-content;
-    column-gap: 1.5rem;
-    row-gap: -1rem;
+    grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
 }
 
 .stats-key-panel li {
@@ -2579,4 +2583,18 @@ font-weight: 500 !important;
     margin-right: 0.5em;
     display: inline-block;
     width: 70px;
+}
+
+@media (max-width: 600px) {
+    .stats-key-panel {
+        max-height: 40vh;
+    }
+    .stats-key-panel ul {
+        grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+        column-gap: 0.5rem;
+        row-gap: 0.2rem;
+    }
+    .stats-key-panel li {
+        font-size: 0.75rem;
+    }
 }
