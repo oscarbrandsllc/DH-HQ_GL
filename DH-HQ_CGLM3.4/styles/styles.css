@@ -2518,12 +2518,24 @@ font-weight: 500 !important;
       text-align: center;
     }
 
-.modal-info-btn {
-    font-size: 1.1rem;
-    color: var(--color-text-secondary);
+.modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em;
+    margin-top: 1rem;
+    font-size: 0.75rem;
+    color: var(--color-text-tertiary);
     cursor: pointer;
     transition: color 0.2s ease;
-    margin-left: 6px;
+}
+
+.modal-footer:hover {
+    color: var(--color-text-primary);
+}
+
+.modal-info-btn {
+    font-size: 0.85rem; /* Keep icon slightly larger than text */
 }
 
 .modal-info-btn:hover {
@@ -2534,7 +2546,7 @@ font-weight: 500 !important;
     background: var(--color-panel-bg);
     border: 1px solid var(--color-panel-border);
     border-radius: var(--card-border-radius);
-    padding: 1rem;
+    padding: 0.75rem 0.5rem;
     margin-top: 1rem;
     max-height: 20vh;
     overflow-y: auto;
@@ -2554,17 +2566,35 @@ font-weight: 500 !important;
 .stats-key-panel ul {
     list-style: none;
     margin: 0 auto;
-    padding: 0rem 1rem 0rem 1rem;
+    padding: 0;
     display: grid;
-    grid-template-columns: max-content max-content;
-    column-gap: 1.5rem;
-    row-gap: -1rem;
+    grid-template-columns: repeat(2, max-content);
+    gap: 0rem 1.25rem;
+    justify-content: center;
+}
+@media (max-width: 540px) {
+    .stats-key-panel ul {
+        grid-template-columns: 1fr;
+        gap: 0.25rem;
+        padding: 0 0.5rem;
+    }
+
+    .stats-key-panel li {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.2rem 0.5rem;
+    }
+
+    .stats-key-panel strong {
+        width: auto;
+        margin-right: 1em;
+    }
 }
 
 .stats-key-panel li {
     font-size: 0.8rem;
     color: var(--color-text-secondary);
-    padding: 0.1rem;
+    padding: 0 0.25rem;
     border-radius: 4px;
     transition: background-color 0.2s ease;
 }
