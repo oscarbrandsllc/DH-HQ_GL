@@ -902,113 +902,95 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 ppgValues.append(overallRankSpan, separatorSpan, posRankContainer);
             }
 
+            modalBody.innerHTML = ''; // Clear existing content
+
             if (!gameLogs || gameLogs.length === 0) {
-                modalBody.innerHTML = `<p class="no-logs">No game logs found for ${playerName} for the current season.</p>`;
+                const noLogsEl = document.createElement('p');
+                noLogsEl.className = 'no-logs';
+                noLogsEl.textContent = `No game logs found for ${playerName} for the current season.`;
+                modalBody.appendChild(noLogsEl);
                 return;
             }
 
             const statLabels = {
-                'fpts': 'FPTS',
-                'pass_att': 'paATT',
-                'pass_cmp': 'COMP',
-                'pass_yd': 'paYDS',
-                'pass_td': 'paTD',
-                'pass_fd': 'pa1D',
-                'pass_rtg': 'paRTG',
-                'rush_att': 'CAR',
-                'rush_yd': 'ruYDS',
-                'ypc': 'YPC',
-                'rush_td': 'ruTD',
-                'rush_fd': 'ru1D',
-                'rush_btkl': 'BTKL',
-                'rush_yac': 'YCO',
-                'yco_per_car': 'YCO  / CAR',
-                'btkl_per_car': 'BTKL  / CAR',
-                'rec_tgt': 'TGT',
-                'rec': 'REC',
-                'rec_yd': 'recYDS',
-                'rec_td': 'recTD',
-                'rec_fd': 'rec1D',
-                'rec_yar': 'YAC',
-                'fum_lost': 'FUM',
+                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
+                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
+                'yco_per_car': 'YCO / CAR', 'btkl_per_car': 'BTKL / CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
+                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM',
             };
 
             const qbStatOrder = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
-            const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd',
-            'rec_yar', 'fum_lost'];
+            const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'fum_lost'];
             const wrTeStatOrder = ['fpts', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
 
             let orderedStatKeys;
-            if (player.pos === 'QB') {
-                orderedStatKeys = qbStatOrder;
-            } else if (player.pos === 'RB') {
-                orderedStatKeys = rbStatOrder;
-            } else if (player.pos === 'WR' || player.pos === 'TE') {
-                orderedStatKeys = wrTeStatOrder;
-            } else {
-                orderedStatKeys = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td','pass_fd','pass_rtg', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'fum_lost'];
-            }
+            if (player.pos === 'QB') orderedStatKeys = qbStatOrder;
+            else if (player.pos === 'RB') orderedStatKeys = rbStatOrder;
+            else if (player.pos === 'WR' || player.pos === 'TE') orderedStatKeys = wrTeStatOrder;
+            else orderedStatKeys = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td','pass_fd','pass_rtg', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'fum_lost'];
 
-            let tableHTML = '<div class="game-logs-table-container"><table><thead><tr><th>WK</th>';
+            const container = document.createElement('div');
+            container.className = 'game-logs-table-container';
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            const headerRow = document.createElement('tr');
+            const wkTh = document.createElement('th');
+            wkTh.textContent = 'WK';
+            headerRow.appendChild(wkTh);
+
             for (const key of orderedStatKeys) {
                 if (statLabels[key]) {
-                    tableHTML += `<th>${statLabels[key]}</th>`;
+                    const th = document.createElement('th');
+                    th.textContent = statLabels[key];
+                    headerRow.appendChild(th);
                 }
             }
-            tableHTML += '</tr></thead><tbody>';
+            thead.appendChild(headerRow);
 
             gameLogs.sort((a, b) => parseInt(a.week) - parseInt(b.week)).forEach(weekStats => {
                 let hasData = false;
-                let rowHTML = `<td>${weekStats.week}</td>`;
+                const row = document.createElement('tr');
+
+                const weekTd = document.createElement('td');
+                weekTd.textContent = weekStats.week;
+                row.appendChild(weekTd);
 
                 for (const key of orderedStatKeys) {
                     if (!statLabels[key]) continue;
 
                     let value;
-                    if (key === 'fpts') {
-                        value = calculateFantasyPoints(weekStats.stats, scoringSettings);
-                    } else if (key === 'ypc') {
-                        const rushYds = weekStats.stats['rush_yd'] || 0;
-                        const rushAtt = weekStats.stats['rush_att'] || 0;
-                        value = rushAtt > 0 ? (rushYds / rushAtt) : 0;
-                    } else if (key === 'yco_per_car') {
-                        const rushYac = weekStats.stats['rush_yac'] || 0;
-                        const rushAtt = weekStats.stats['rush_att'] || 0;
-                        value = rushAtt > 0 ? (rushYac / rushAtt) : 0;
-                    } else if (key === 'btkl_per_car') {
-                        const rushBtkl = weekStats.stats['rush_btkl'] || 0;
-                        const rushAtt = weekStats.stats['rush_att'] || 0;
-                        value = rushAtt > 0 ? (rushBtkl / rushAtt) : 0;
-                    } else {
-                        value = weekStats.stats[key] || 0;
-                    }
+                    if (key === 'fpts') value = calculateFantasyPoints(weekStats.stats, scoringSettings);
+                    else if (key === 'ypc') value = (weekStats.stats['rush_att'] || 0) > 0 ? ((weekStats.stats['rush_yd'] || 0) / weekStats.stats['rush_att']) : 0;
+                    else if (key === 'yco_per_car') value = (weekStats.stats['rush_att'] || 0) > 0 ? ((weekStats.stats['rush_yac'] || 0) / weekStats.stats['rush_att']) : 0;
+                    else if (key === 'btkl_per_car') value = (weekStats.stats['rush_att'] || 0) > 0 ? ((weekStats.stats['rush_btkl'] || 0) / weekStats.stats['rush_att']) : 0;
+                    else value = weekStats.stats[key] || 0;
 
                     if (value > 0) hasData = true;
 
                     let displayValue;
-                    if (typeof value !== 'number') {
-                        displayValue = value || '0';
-                    } else {
-                        if (key === 'yco_per_car') {
-                            displayValue = value.toFixed(1);
-                        } else if (key === 'btkl_per_car') {
-                            displayValue = value.toFixed(2);
-                        } else if (key === 'ypc') {
-                            displayValue = value.toFixed(2);
-                        } else {
-                            displayValue = value.toFixed(2).replace(/\.00$/, '');
-                        }
-                    }
-                    rowHTML += `<td>${displayValue}</td>`;
+                    if (typeof value !== 'number') displayValue = value || '0';
+                    else if (key === 'yco_per_car') displayValue = value.toFixed(1);
+                    else if (key === 'btkl_per_car' || key === 'ypc') displayValue = value.toFixed(2);
+                    else displayValue = value.toFixed(2).replace(/\.00$/, '');
+
+                    const td = document.createElement('td');
+                    td.textContent = displayValue;
+                    row.appendChild(td);
                 }
 
                 if (hasData) {
-                    tableHTML += `<tr>${rowHTML}</tr>`;
+                    tbody.appendChild(row);
                 }
             });
 
-            tableHTML += '</tbody></table></div>';
-            modalBody.innerHTML = tableHTML;
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            container.appendChild(table);
+            modalBody.appendChild(container);
+            modalBody.scrollLeft = 0;
         }
 
         function populateLeagueSelect(leagues) {
