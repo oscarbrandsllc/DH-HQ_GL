@@ -2650,3 +2650,36 @@ font-weight: 500 !important;
     display: inline-block;
     width: 70px;
 }
+
+/* Trade Comparison Modal */
+#trade-compare-modal .modal-content {
+    width: 700px;
+    max-width: 95%;
+    font-size: 0.75rem;
+}
+
+#trade-compare-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 0.5rem;
+}
+
+.compare-summary-chip {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    padding: 2px 4px;
+    line-height: 1.2;
+}
+
+#trade-compare-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.65rem;
+}
+
+#trade-compare-table th,
+#trade-compare-table td {
+    padding: 2px 4px;
+    text-align: center;
+}

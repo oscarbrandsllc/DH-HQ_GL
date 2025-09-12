@@ -28,12 +28,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const pageType = document.body.dataset.page || 'welcome';
 
         const gameLogsModal = document.getElementById('game-logs-modal');
-        const modalCloseBtn = document.querySelector('.modal-close-btn');
-        const modalInfoBtn = document.querySelector('.modal-info-btn');
+        const modalCloseBtn = gameLogsModal?.querySelector('.modal-close-btn');
+        const modalInfoBtn = gameLogsModal?.querySelector('.modal-info-btn');
         const statsKeyContainer = document.getElementById('stats-key-container');
-        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalOverlay = gameLogsModal?.querySelector('.modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+
+        const tradeCompareModal = document.getElementById('trade-compare-modal');
+        const tradeCompareCloseBtn = tradeCompareModal?.querySelector('.trade-compare-close');
+        const tradeCompareOverlay = tradeCompareModal?.querySelector('.modal-overlay');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -189,6 +193,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
+                    }
+                });
+            }
+            if (tradeCompareModal) {
+                tradeCompareCloseBtn.addEventListener('click', () => closeTradeCompareModal());
+                tradeCompareOverlay.addEventListener('click', () => closeTradeCompareModal());
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !tradeCompareModal.classList.contains('hidden')) {
+                        closeTradeCompareModal();
                     }
                 });
             }
@@ -1238,6 +1251,15 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
     return;
   }
 
+  const teamNames = Array.from(state.teamsToCompare);
+  const playerAssets = [];
+  teamNames.forEach(name => {
+      (state.tradeBlock[name] || []).forEach(a => {
+          if (a.pos && a.pos !== 'DP') playerAssets.push(a);
+      });
+  });
+  const compareDisabled = playerAssets.length < 2 ? 'disabled' : '';
+
   tradeSimulator.style.display = 'block';
   tradeSimulator.innerHTML = `
               <div class="trade-container glass-panel">
@@ -1249,19 +1271,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="openCompareStats" ${compareDisabled}><i class="fa-solid fa-chart-column"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
-        
+
           <div class="trade-body"></div>
           <div class="trade-footnote">• Non-Adjusted Values •</div>
         </div>
-        
+
         <button id="showTradeButton"><i class="fa-solid fa-circle-chevron-up"></i> Trade Preview <i class="fa-solid fa-circle-chevron-up"></i></button>
   `;
 
             const tradeBody = tradeSimulator.querySelector('.trade-body');
-            const teamNames = Array.from(state.teamsToCompare);
             const tradeData = {};
 
             teamNames.forEach(name => {
@@ -1336,6 +1358,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
 
+            document.getElementById('openCompareStats')?.addEventListener('click', openTradeCompareModal);
             document.getElementById('clearTradeButton').addEventListener('click', clearTrade);
             document.getElementById('collapseTradeButton').addEventListener('click', () => {
                 tradeSimulator.classList.add('collapsed');
@@ -1349,6 +1372,138 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
 
             mainContent.style.paddingBottom = `${tradeSimulator.offsetHeight + 20}px`;
+        }
+
+        async function openTradeCompareModal() {
+            const players = [];
+            Object.values(state.tradeBlock).forEach(list => {
+                list.forEach(a => {
+                    if (a.pos && a.pos !== 'DP' && !players.find(p => p.id === a.id)) {
+                        players.push({ id: a.id, label: a.label, pos: a.pos });
+                    }
+                });
+            });
+            if (players.length < 2) return;
+            const selected = players.slice(0, 4);
+
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return;
+            const scoringSettings = league.scoring_settings;
+
+            const firstLogs = await fetchGameLogs(selected[0].id);
+            const comparison = [];
+            comparison.push({
+                player: selected[0],
+                totals: aggregateStats(firstLogs, scoringSettings),
+                ranks: calculatePlayerStatsAndRanks(selected[0].id)
+            });
+            for (let i = 1; i < selected.length; i++) {
+                const logs = getPlayerWeeklyStatsFromState(selected[i].id);
+                comparison.push({
+                    player: selected[i],
+                    totals: aggregateStats(logs, scoringSettings),
+                    ranks: calculatePlayerStatsAndRanks(selected[i].id)
+                });
+            }
+            renderTradeCompareModal(comparison, scoringSettings);
+            tradeCompareModal.classList.remove('hidden');
+        }
+
+        function closeTradeCompareModal() {
+            tradeCompareModal.classList.add('hidden');
+        }
+
+        function getPlayerWeeklyStatsFromState(playerId) {
+            const logs = [];
+            for (const week in state.weeklyStats) {
+                const stats = state.weeklyStats[week][playerId];
+                if (stats) logs.push({ week, stats });
+            }
+            return logs;
+        }
+
+        function aggregateStats(logs, scoringSettings) {
+            const totals = {};
+            let games = 0;
+            let fpts = 0;
+            logs.forEach(w => {
+                games++;
+                fpts += calculateFantasyPoints(w.stats, scoringSettings);
+                for (const key in w.stats) {
+                    totals[key] = (totals[key] || 0) + w.stats[key];
+                }
+            });
+            totals.fpts = fpts;
+            totals.games = games;
+            return totals;
+        }
+
+        function renderTradeCompareModal(data, scoringSettings) {
+            const summaryContainer = document.getElementById('trade-compare-summary');
+            const tableContainer = document.getElementById('trade-compare-table');
+            summaryContainer.innerHTML = '';
+            tableContainer.innerHTML = '';
+
+            data.forEach(d => {
+                const chip = document.createElement('div');
+                chip.className = 'compare-summary-chip';
+                chip.innerHTML = `<strong>${d.player.label}</strong><br>` +
+                    `<span>${d.ranks.total_pts} / ${d.ranks.ppg}</span><br>` +
+                    `<span>#${d.ranks.overallRank} / #${d.ranks.ppgOverallRank}</span><br>` +
+                    `<span>${d.player.pos}&middot;${d.ranks.posRank} / ${d.player.pos}&middot;${d.ranks.ppgPosRank}</span>`;
+                summaryContainer.appendChild(chip);
+            });
+
+            const statLabels = { 'fpts':'FPTS','pass_att':'paATT','pass_cmp':'COMP','pass_yd':'paYDS','pass_td':'paTD','pass_fd':'pa1D','pass_rtg':'paRTG','rush_att':'CAR','rush_yd':'ruYDS','ypc':'YPC','rush_td':'ruTD','rush_fd':'ru1D','rush_btkl':'BTKL','rush_yac':'YCO','yco_per_car':'YCO/CAR','btkl_per_car':'BTKL/CAR','rec_tgt':'TGT','rec':'REC','rec_yd':'recYDS','rec_td':'recTD','rec_fd':'rec1D','rec_yar':'YAC','fum_lost':'FUM' };
+            const qbOrder = ['fpts','pass_att','pass_cmp','pass_yd','pass_td','pass_fd','pass_rtg','rush_att','rush_yd','rush_td','ypc','fum_lost'];
+            const rbOrder = ['fpts','rush_att','rush_yd','ypc','rush_td','rush_fd','rush_btkl','rush_yac','yco_per_car','btkl_per_car','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','fum_lost'];
+            const wrTeOrder = ['fpts','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','rush_att','rush_yd','rush_td','ypc','fum_lost'];
+
+            let orderedStatKeys = [];
+            data.forEach(d => {
+                let order;
+                if (d.player.pos === 'QB') order = qbOrder;
+                else if (d.player.pos === 'RB') order = rbOrder;
+                else order = wrTeOrder;
+                order.forEach(k => { if (!orderedStatKeys.includes(k)) orderedStatKeys.push(k); });
+            });
+
+            const table = document.createElement('table');
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            const statTh = document.createElement('th');
+            statTh.textContent = 'STAT';
+            headerRow.appendChild(statTh);
+            data.forEach(d => {
+                const th = document.createElement('th');
+                th.textContent = d.player.label;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            orderedStatKeys.forEach(key => {
+                const row = document.createElement('tr');
+                const statTd = document.createElement('td');
+                statTd.textContent = statLabels[key] || key;
+                row.appendChild(statTd);
+                data.forEach(d => {
+                    const totals = d.totals;
+                    let value;
+                    if (key === 'fpts') value = totals.games ? totals.fpts / totals.games : 0;
+                    else if (key === 'ypc') value = totals['rush_att'] > 0 ? totals['rush_yd'] / totals['rush_att'] : 0;
+                    else if (key === 'yco_per_car') value = totals['rush_att'] > 0 ? totals['rush_yac'] / totals['rush_att'] : 0;
+                    else if (key === 'btkl_per_car') value = totals['rush_att'] > 0 ? totals['rush_btkl'] / totals['rush_att'] : 0;
+                    else value = totals.games ? (totals[key] || 0) / totals.games : 0;
+                    const td = document.createElement('td');
+                    td.textContent = typeof value === 'number' ? value.toFixed(2).replace(/\.00$/,'') : value;
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
         }
 
 
