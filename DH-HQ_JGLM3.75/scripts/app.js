@@ -34,6 +34,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const modalOverlay = document.querySelector('.modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+        const playerComparisonModal = document.getElementById('player-comparison-modal');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -173,6 +174,13 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             rosterGrid?.addEventListener('click', handleTeamSelect);
             mainContent?.addEventListener('click', handleAssetClickForTrade);
+
+            tradeSimulator.addEventListener('click', (e) => {
+                if (e.target.closest('#comparePlayersButton')) {
+                    handlePlayerCompare(e);
+                }
+            });
+
             compareButton?.addEventListener('click', handleCompareClick);
             clearCompareButton?.addEventListener('click', () => handleClearCompare(true));
             positionalViewBtn?.addEventListener('click', () => setRosterView('positional'));
@@ -189,6 +197,18 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
+                    }
+                });
+            }
+
+            if (playerComparisonModal) {
+                const closeBtn = playerComparisonModal.querySelector('.modal-close-btn');
+                const overlay = playerComparisonModal.querySelector('.modal-overlay');
+                if (closeBtn) closeBtn.addEventListener('click', () => closeComparisonModal());
+                if (overlay) overlay.addEventListener('click', () => closeComparisonModal());
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !playerComparisonModal.classList.contains('hidden')) {
+                        closeComparisonModal();
                     }
                 });
             }
@@ -993,6 +1013,136 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             modalBody.scrollLeft = 0;
         }
 
+        async function handlePlayerCompare(e) {
+            const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+            const comparisonModalBody = document.getElementById('comparison-modal-body');
+            comparisonModalBody.innerHTML = '<p class="text-center p-4">Loading player comparison...</p>';
+            openComparisonModal();
+
+            const playerData = await Promise.all(selectedPlayers.map(async (player) => {
+                const gameLogs = await fetchGameLogs(player.id);
+                const playerRanks = calculatePlayerStatsAndRanks(player.id);
+                return { ...player, gameLogs, ...playerRanks };
+            }));
+
+            renderPlayerComparison(playerData);
+        }
+
+        function renderPlayerComparison(players) {
+            const comparisonModalBody = document.getElementById('comparison-modal-body');
+            comparisonModalBody.innerHTML = ''; // Clear existing content
+
+            const container = document.createElement('div');
+            container.className = 'player-comparison-container';
+
+            // Summary Chips
+            const summaryChipsRow = document.createElement('div');
+            summaryChipsRow.className = 'comparison-summary-chips-row';
+            players.forEach(player => {
+                const summaryChipsContainer = document.createElement('div');
+                summaryChipsContainer.className = 'summary-chips-container';
+                const fullPlayer = state.players[player.id];
+                const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
+                summaryChipsContainer.innerHTML = `
+                    <div class="summary-chip">
+                        <h4>${playerName} (${player.pos})</h4>
+                        <div class="chip-values">
+                            <span>${player.total_pts} FPTS</span> / <span>${player.ppg} PPG</span>
+                        </div>
+                        <div class="chip-values">
+                            <span>OVR #${player.overallRank}</span> / <span style="color: ${getGameLogPosRankColor(player.pos, player.posRank)}">POS #${player.posRank}</span>
+                        </div>
+                    </div>`;
+                summaryChipsRow.appendChild(summaryChipsContainer);
+            });
+            container.appendChild(summaryChipsRow);
+
+            // Detailed Season Totals Table
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'comparison-table-container';
+
+            const table = document.createElement('table');
+            table.className = 'player-comparison-table';
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            // Main Header
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>STAT</th>';
+            players.forEach(player => {
+                const fullPlayer = state.players[player.id];
+                const playerName = fullPlayer ? `${fullPlayer.first_name.charAt(0)}. ${fullPlayer.last_name}` : player.label;
+                headerRow.innerHTML += `<th>${playerName}</th>`;
+            });
+            thead.appendChild(headerRow);
+
+            // Table Body
+            const statLabels = {
+                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD',
+                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD',
+                'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
+            };
+
+            const orderedStatKeys = Object.keys(statLabels);
+
+            orderedStatKeys.forEach(statKey => {
+                const row = document.createElement('tr');
+
+                let hasData = false;
+                const cells = [`<td>${statLabels[statKey]}</td>`];
+                const values = [];
+
+                for (let i = 0; i < players.length; i++) {
+                    const player = players[i];
+                    let total;
+
+                    if (statKey === 'ypc') {
+                        const totalYards = player.gameLogs.reduce((sum, w) => sum + (w.stats['rush_yd'] || 0), 0);
+                        const totalCarries = player.gameLogs.reduce((sum, w) => sum + (w.stats['rush_att'] || 0), 0);
+                        total = totalCarries > 0 ? totalYards / totalCarries : 0;
+                    } else if (statKey === 'fpts') {
+                        total = parseFloat(player.total_pts);
+                    }
+                    else {
+                        total = player.gameLogs.reduce((sum, week) => sum + (week.stats[statKey] || 0), 0);
+                    }
+
+                    if (total > 0) hasData = true;
+                    values.push(total);
+                }
+
+                if (hasData) {
+                    let maxVal = -Infinity;
+                    let maxIndex = -1;
+                    values.forEach((val, i) => {
+                        if (val > maxVal) {
+                            maxVal = val;
+                            maxIndex = i;
+                        }
+                    });
+
+                    values.forEach((val, i) => {
+                        const td = document.createElement('td');
+                        td.textContent = val.toFixed(statKey === 'ypc' ? 2 : 0);
+                        if (val > 0 && i === maxIndex) {
+                            td.classList.add('best-stat');
+                        }
+                        cells.push(td.outerHTML);
+                    });
+
+                    row.innerHTML = cells.join('');
+                    tbody.appendChild(row);
+                }
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            container.appendChild(tableContainer);
+
+            comparisonModalBody.appendChild(container);
+        }
+
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
             leagues.forEach(l => {
@@ -1244,6 +1394,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
           <div class="trade-header">
             <div class="trade-header-left">
               <h3>Trade Preview <i class="fa-solid fa-code-compare fa-rotate-270"></i></h3>
+              <button id="comparePlayersButton" class="control-button-subtle"><i class="fa-solid fa-chart-simple"></i> Compare</button>
             </div>
             <div class="trade-header-center">
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
@@ -1333,6 +1484,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 if (clearBtn) clearBtn.disabled = !hasAnyAssets;
             } catch (e) { /* no-op */ }
 
+            const comparePlayersButton = document.getElementById('comparePlayersButton');
+            if (comparePlayersButton) {
+                const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+                const playerCount = selectedPlayers.length;
+                comparePlayersButton.disabled = playerCount < 2 || playerCount > 4;
+            }
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
 
@@ -1620,6 +1777,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function closeModal() {
             gameLogsModal.classList.add('hidden');
             statsKeyContainer.classList.add('hidden');
+            closeComparisonModal();
+        }
+
+        function openComparisonModal() {
+            if (playerComparisonModal) {
+                playerComparisonModal.classList.remove('hidden');
+            }
+        }
+
+        function closeComparisonModal() {
+            if (playerComparisonModal) {
+                playerComparisonModal.classList.add('hidden');
+            }
         }
 
         function setLoading(isLoading, message = 'Loading...') {
