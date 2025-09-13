@@ -34,6 +34,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const modalOverlay = document.querySelector('.modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+        const playerComparisonModal = document.getElementById('player-comparison-modal');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -173,6 +174,13 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             rosterGrid?.addEventListener('click', handleTeamSelect);
             mainContent?.addEventListener('click', handleAssetClickForTrade);
+
+            tradeSimulator.addEventListener('click', (e) => {
+                if (e.target.closest('#comparePlayersButton')) {
+                    handlePlayerCompare(e);
+                }
+            });
+
             compareButton?.addEventListener('click', handleCompareClick);
             clearCompareButton?.addEventListener('click', () => handleClearCompare(true));
             positionalViewBtn?.addEventListener('click', () => setRosterView('positional'));
@@ -189,6 +197,18 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
+                    }
+                });
+            }
+
+            if (playerComparisonModal) {
+                const closeBtn = playerComparisonModal.querySelector('.modal-close-btn');
+                const overlay = playerComparisonModal.querySelector('.modal-overlay');
+                if (closeBtn) closeBtn.addEventListener('click', () => closeComparisonModal());
+                if (overlay) overlay.addEventListener('click', () => closeComparisonModal());
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && !playerComparisonModal.classList.contains('hidden')) {
+                        closeComparisonModal();
                     }
                 });
             }
@@ -993,6 +1013,171 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             modalBody.scrollLeft = 0;
         }
 
+        async function handlePlayerCompare(e) {
+            const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+            const comparisonModalBody = document.getElementById('comparison-modal-body');
+            comparisonModalBody.innerHTML = '<p class="text-center p-4">Loading player comparison...</p>';
+            openComparisonModal();
+
+            const playerData = await Promise.all(selectedPlayers.map(async (player) => {
+                const gameLogs = await fetchGameLogs(player.id);
+                const playerRanks = calculatePlayerStatsAndRanks(player.id);
+                return { ...player, gameLogs, ...playerRanks };
+            }));
+
+            renderPlayerComparison(playerData);
+        }
+
+        function renderPlayerComparison(players) {
+            const comparisonModalBody = document.getElementById('comparison-modal-body');
+            comparisonModalBody.innerHTML = ''; // Clear existing content
+
+            const container = document.createElement('div');
+            container.className = 'player-comparison-container';
+
+            // Summary Chips Row
+            const summaryChipsRow = document.createElement('div');
+            summaryChipsRow.className = 'comparison-summary-chips-row';
+            summaryChipsRow.style.gridTemplateColumns = `100px repeat(${players.length}, 1fr)`;
+            summaryChipsRow.appendChild(document.createElement('div')); // Empty cell for alignment
+            players.forEach(player => {
+                const summaryChipsContainer = document.createElement('div');
+                summaryChipsContainer.className = 'summary-chips-container';
+                summaryChipsContainer.innerHTML = `
+                    <div class="summary-chip">
+                        <h4>FPTS / PPG</h4>
+                        <div class="chip-values">
+                            <span style="color: ${getRankColor(player.overallRank)}">${player.total_pts}</span>
+                            <span class="chip-separator">/</span>
+                            <span style="color: ${getRankColor(player.ppgOverallRank)}">${player.ppg}</span>
+                        </div>
+                    </div>
+                    <div class="summary-chip">
+                        <h4>FPTS RKs</h4>
+                        <div class="chip-values">
+                            <span style="color: ${getRankColor(player.overallRank)}">#${player.overallRank}</span>
+                            <span class="chip-separator">/</span>
+                            <span class="pos-rank-container">
+                                <span class="chip-pos-rank-label pos-color-${player.pos}">${player.pos}·</span>
+                                <span style="color: ${getGameLogPosRankColor(player.pos, player.posRank)}">${player.posRank}</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="summary-chip">
+                        <h4>PPG RKs</h4>
+                        <div class="chip-values">
+                            <span style="color: ${getRankColor(player.ppgOverallRank)}">#${player.ppgOverallRank}</span>
+                            <span class="chip-separator">/</span>
+                            <span class="pos-rank-container">
+                                <span class="chip-pos-rank-label pos-color-${player.pos}">${player.pos}·</span>
+                                <span style="color: ${getGameLogPosRankColor(player.pos, player.ppgPosRank)}">${player.ppgPosRank}</span>
+                            </span>
+                        </div>
+                    </div>`;
+                summaryChipsRow.appendChild(summaryChipsContainer);
+            });
+            container.appendChild(summaryChipsRow);
+
+            // Detailed Weekly Stats Table
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'comparison-table-container';
+
+            const table = document.createElement('table');
+            table.className = 'player-comparison-table';
+            const thead = document.createElement('thead');
+            const tbody = document.createElement('tbody');
+
+            // Main Header
+            const headerRow = document.createElement('tr');
+            headerRow.innerHTML = '<th>STAT</th>';
+            players.forEach(player => {
+                const fullPlayer = state.players[player.id];
+                const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
+                headerRow.innerHTML += `<th>${playerName}</th>`;
+            });
+            thead.appendChild(headerRow);
+
+            // Grouped Body
+            const statLabels = {
+                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
+                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
+                'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
+                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM',
+            };
+
+            const allPos = players.map(p => p.pos);
+            const uniquePos = [...new Set(allPos)];
+
+            let orderedStatKeys;
+            if (uniquePos.length === 1 && uniquePos[0] === 'QB') orderedStatKeys = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
+            else if (uniquePos.length === 1 && uniquePos[0] === 'RB') orderedStatKeys = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'fum_lost'];
+            else if (uniquePos.length === 1 && (uniquePos[0] === 'WR' || uniquePos[0] === 'TE')) orderedStatKeys = ['fpts', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum_lost'];
+            else orderedStatKeys = Object.keys(statLabels);
+
+            const playersWithLogs = players.map(p => ({
+                ...p,
+                gameLogsByWeek: p.gameLogs.reduce((acc, log) => {
+                    acc[log.week] = log.stats;
+                    return acc;
+                }, {})
+            }));
+
+            orderedStatKeys.forEach(statKey => {
+                if (statLabels[statKey]) {
+                    const statHeaderRow = document.createElement('tr');
+                    statHeaderRow.className = 'stat-group-header';
+                    statHeaderRow.innerHTML = `<td colspan="${players.length + 1}">${statLabels[statKey]}</td>`;
+                    tbody.appendChild(statHeaderRow);
+
+                    for (let week = 1; week <= 18; week++) {
+                        const weekRow = document.createElement('tr');
+                        weekRow.innerHTML = `<td>Week ${week}</td>`;
+
+                        let weekHasData = false;
+                        let maxVal = -Infinity;
+                        let maxIndex = -1;
+                        const values = [];
+
+                        for (let i = 0; i < playersWithLogs.length; i++) {
+                            const player = playersWithLogs[i];
+                            const weekStats = player.gameLogsByWeek[week];
+                            let value = 0;
+                            if (weekStats) {
+                                if (statKey === 'fpts') value = calculateFantasyPoints(weekStats, state.leagues.find(l => l.league_id === state.currentLeagueId).scoring_settings);
+                                else if (statKey === 'ypc') value = (weekStats['rush_att'] || 0) > 0 ? ((weekStats['rush_yd'] || 0) / weekStats['rush_att']) : 0;
+                                else value = weekStats[statKey] || 0;
+                            }
+                            values.push(value);
+                            if (value > 0) weekHasData = true;
+                            if (value > maxVal) {
+                                maxVal = value;
+                                maxIndex = i;
+                            }
+                        }
+
+                        if (weekHasData) {
+                            values.forEach((val, i) => {
+                                const td = document.createElement('td');
+                                td.textContent = val.toFixed(2).replace(/\.00$/, '');
+                                if (val > 0 && i === maxIndex) {
+                                    td.classList.add('best-stat');
+                                }
+                                weekRow.appendChild(td);
+                            });
+                            tbody.appendChild(weekRow);
+                        }
+                    }
+                }
+            });
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            tableContainer.appendChild(table);
+            container.appendChild(tableContainer);
+
+            comparisonModalBody.appendChild(container);
+        }
+
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
             leagues.forEach(l => {
@@ -1244,6 +1429,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
           <div class="trade-header">
             <div class="trade-header-left">
               <h3>Trade Preview <i class="fa-solid fa-code-compare fa-rotate-270"></i></h3>
+              <button id="comparePlayersButton" class="control-button-subtle"><i class="fa-solid fa-chart-simple"></i> Compare</button>
             </div>
             <div class="trade-header-center">
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
@@ -1333,6 +1519,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 if (clearBtn) clearBtn.disabled = !hasAnyAssets;
             } catch (e) { /* no-op */ }
 
+            const comparePlayersButton = document.getElementById('comparePlayersButton');
+            if (comparePlayersButton) {
+                const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+                const playerCount = selectedPlayers.length;
+                comparePlayersButton.disabled = playerCount < 2 || playerCount > 4;
+            }
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
 
@@ -1620,6 +1812,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function closeModal() {
             gameLogsModal.classList.add('hidden');
             statsKeyContainer.classList.add('hidden');
+            closeComparisonModal();
+        }
+
+        function openComparisonModal() {
+            if (playerComparisonModal) {
+                playerComparisonModal.classList.remove('hidden');
+            }
+        }
+
+        function closeComparisonModal() {
+            if (playerComparisonModal) {
+                playerComparisonModal.classList.add('hidden');
+            }
         }
 
         function setLoading(isLoading, message = 'Loading...') {
