@@ -28,12 +28,17 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         const pageType = document.body.dataset.page || 'welcome';
 
         const gameLogsModal = document.getElementById('game-logs-modal');
-        const modalCloseBtn = document.querySelector('.modal-close-btn');
+        const modalCloseBtn = document.querySelector('#game-logs-modal .modal-close-btn');
         const modalInfoBtn = document.querySelector('.modal-info-btn');
         const statsKeyContainer = document.getElementById('stats-key-container');
-        const modalOverlay = document.querySelector('.modal-overlay');
+        const modalOverlay = document.querySelector('#game-logs-modal .modal-overlay');
         const modalPlayerName = document.getElementById('modal-player-name');
         const modalBody = document.getElementById('modal-body');
+
+        const compareStatsModal = document.getElementById('player-compare-modal');
+        const compareModalBody = document.getElementById('compare-modal-body');
+        const compareModalCloseBtn = compareStatsModal?.querySelector('.modal-close-btn');
+        const compareModalOverlay = compareStatsModal?.querySelector('.modal-overlay');
 
         // --- Menu Button ---
         const menuButton = document.getElementById('menu-button');
@@ -186,12 +191,21 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 modalInfoBtn.addEventListener('click', () => {
                     statsKeyContainer.classList.toggle('hidden');
                 });
-                document.addEventListener('keydown', (e) => {
-                    if (e.key === 'Escape' && !gameLogsModal.classList.contains('hidden')) {
+            }
+            if (compareStatsModal) {
+                compareModalCloseBtn.addEventListener('click', () => closeCompareModal());
+                compareModalOverlay.addEventListener('click', () => closeCompareModal());
+            }
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (gameLogsModal && !gameLogsModal.classList.contains('hidden')) {
                         closeModal();
                     }
-                });
-            }
+                    if (compareStatsModal && !compareStatsModal.classList.contains('hidden')) {
+                        closeCompareModal();
+                    }
+                }
+            });
         }
         
         // --- Initialization ---
@@ -1249,6 +1263,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
               <button id="collapseTradeButton"><i class="fa-solid fa-caret-down"></i></button>
             </div>
             <div class="trade-header-right">
+              <button id="tradeCompareStats" disabled><i class="fa-solid fa-table"></i></button>
               <button id="clearTradeButton"><i class="fa fa-refresh"></i></button>
             </div>
           </div>
@@ -1326,6 +1341,21 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             
             tradeBody.innerHTML = bodyHtml;
 
+            const statsBtn = document.getElementById('tradeCompareStats');
+            if (statsBtn) {
+                const updateStatsBtn = () => {
+                    const currentPlayers = getSelectedTradePlayers();
+                    statsBtn.disabled = currentPlayers.length < 2;
+                };
+                updateStatsBtn();
+                statsBtn.onclick = () => {
+                    const currentPlayers = getSelectedTradePlayers();
+                    if (currentPlayers.length >= 2) {
+                        showPlayerComparison(currentPlayers);
+                    }
+                };
+            }
+
             // Disable/enable Clear button based on whether any assets are selected
             const clearBtn = document.getElementById('clearTradeButton');
             try {
@@ -1351,6 +1381,154 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             mainContent.style.paddingBottom = `${tradeSimulator.offsetHeight + 20}px`;
         }
 
+
+        function getSelectedTradePlayers() {
+            const players = [];
+            Object.values(state.tradeBlock).forEach(assets => {
+                assets.forEach(asset => {
+                    if (state.players[asset.id]) {
+                        const p = state.players[asset.id];
+                        players.push({ id: asset.id, pos: p.position || asset.pos, name: `${p.first_name} ${p.last_name}` });
+                    }
+                });
+            });
+            const unique = [];
+            const seen = new Set();
+            players.forEach(p => {
+                if (!seen.has(p.id)) {
+                    seen.add(p.id);
+                    unique.push(p);
+                }
+            });
+            return unique.slice(0, 4);
+        }
+
+        function getLogsFromState(playerId) {
+            const logs = [];
+            for (const week in state.weeklyStats) {
+                const stats = state.weeklyStats[week][playerId];
+                if (stats) logs.push({ week, stats });
+            }
+            return logs;
+        }
+
+        async function showPlayerComparison(players) {
+            if (players.length < 2) return;
+            compareModalBody.innerHTML = '<p class="text-center p-4">Loading...</p>';
+            openCompareModal();
+            await renderPlayerComparison(players);
+        }
+
+        async function renderPlayerComparison(players) {
+            const playerLogs = {};
+            const firstLogs = await fetchGameLogs(players[0].id);
+            playerLogs[players[0].id] = firstLogs;
+            for (let i = 1; i < players.length; i++) {
+                playerLogs[players[i].id] = getLogsFromState(players[i].id);
+            }
+
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) {
+                compareModalBody.innerHTML = '<p class="text-center p-4">No league data.</p>';
+                return;
+            }
+            const scoringSettings = league.scoring_settings;
+
+            const STAT_LABELS = { 'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'rush_td': 'ruTD', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD' };
+            const STAT_ORDER = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'rush_att', 'rush_yd', 'rush_td', 'rec_tgt', 'rec', 'rec_yd', 'rec_td'];
+
+            const totals = {};
+            players.forEach(p => {
+                totals[p.id] = {};
+                STAT_ORDER.forEach(k => totals[p.id][k] = 0);
+                const logs = playerLogs[p.id];
+                logs.forEach(weekStats => {
+                    STAT_ORDER.forEach(k => {
+                        let value;
+                        if (k === 'fpts') value = calculateFantasyPoints(weekStats.stats, scoringSettings);
+                        else value = weekStats.stats[k] || 0;
+                        totals[p.id][k] += value;
+                    });
+                });
+            });
+
+            compareModalBody.innerHTML = '';
+            const summary = buildCompareSummary(players);
+            compareModalBody.appendChild(summary);
+
+            const table = document.createElement('table');
+            table.id = 'compare-table';
+            const thead = document.createElement('thead');
+            let headerRow = '<tr><th>Stat</th>';
+            players.forEach(p => { headerRow += `<th>${p.name}</th>`; });
+            headerRow += '</tr>';
+            thead.innerHTML = headerRow;
+            table.appendChild(thead);
+            const tbody = document.createElement('tbody');
+            STAT_ORDER.forEach(key => {
+                const row = document.createElement('tr');
+                const label = document.createElement('td');
+                label.textContent = STAT_LABELS[key];
+                row.appendChild(label);
+                players.forEach(p => {
+                    const td = document.createElement('td');
+                    let val = totals[p.id][key];
+                    if (typeof val === 'number') val = val.toFixed(1).replace(/\.0$/, '');
+                    td.textContent = val;
+                    row.appendChild(td);
+                });
+                tbody.appendChild(row);
+            });
+            table.appendChild(tbody);
+            compareModalBody.appendChild(table);
+        }
+
+        function buildCompareSummary(players) {
+            const container = document.createElement('div');
+            container.className = 'compare-summary';
+            players.forEach(p => {
+                const ranks = calculatePlayerStatsAndRanks(p.id);
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'compare-summary-player';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'compare-summary-name';
+                const posTag = document.createElement('span');
+                posTag.className = `player-tag ${p.pos}`;
+                posTag.textContent = p.pos;
+                nameDiv.appendChild(posTag);
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = p.name;
+                nameDiv.appendChild(nameSpan);
+                playerDiv.appendChild(nameDiv);
+
+                const chip1 = document.createElement('div');
+                chip1.className = 'summary-chip';
+                chip1.innerHTML = `<h4>FPTS / PPG</h4><div class="chip-values"><span style="color:${getRankColor(ranks.overallRank)}">${ranks.total_pts}</span><span class="chip-separator">/</span><span style="color:${getRankColor(ranks.ppgOverallRank)}">${ranks.ppg}</span></div>`;
+                playerDiv.appendChild(chip1);
+
+                const chip2 = document.createElement('div');
+                chip2.className = 'summary-chip';
+                if (ranks.overallRank === 'NA') {
+                    chip2.innerHTML = '<h4>FPTS RKs</h4><div class="chip-values"><span>NA</span></div>';
+                } else {
+                    chip2.innerHTML = `<h4>FPTS RKs</h4><div class="chip-values"><span style="color:${getRankColor(ranks.overallRank)}">#${ranks.overallRank}</span><span class="chip-separator">/</span><span class="pos-rank-container"><span class="chip-pos-rank-label pos-color-${p.pos}">${p.pos}·</span><span style="color:${getGameLogPosRankColor(p.pos, ranks.posRank)}">${ranks.posRank}</span></span></div>`;
+                }
+                playerDiv.appendChild(chip2);
+
+                const chip3 = document.createElement('div');
+                chip3.className = 'summary-chip';
+                if (ranks.ppgOverallRank === 'NA') {
+                    chip3.innerHTML = '<h4>PPG RKs</h4><div class="chip-values"><span>NA</span></div>';
+                } else {
+                    chip3.innerHTML = `<h4>PPG RKs</h4><div class="chip-values"><span style="color:${getRankColor(ranks.ppgOverallRank)}">#${ranks.ppgOverallRank}</span><span class="chip-separator">/</span><span class="pos-rank-container"><span class="chip-pos-rank-label pos-color-${p.pos}">${p.pos}·</span><span style="color:${getGameLogPosRankColor(p.pos, ranks.ppgPosRank)}">${ranks.ppgPosRank}</span></span></div>`;
+                }
+                playerDiv.appendChild(chip3);
+
+                container.appendChild(playerDiv);
+            });
+            return container;
+        }
 
         // --- Player List (Ownership) Functions ---
         async function renderPlayerList() {
@@ -1620,6 +1798,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function closeModal() {
             gameLogsModal.classList.add('hidden');
             statsKeyContainer.classList.add('hidden');
+        }
+
+        function openCompareModal() {
+            compareStatsModal.classList.remove('hidden');
+        }
+
+        function closeCompareModal() {
+            compareStatsModal.classList.add('hidden');
         }
 
         function setLoading(isLoading, message = 'Loading...') {
