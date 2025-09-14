@@ -1141,49 +1141,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 }
                 tfoot.appendChild(footerRow);
 
-                const avgRow = document.createElement('tr');
-                const avgTh = document.createElement('th');
-                avgTh.textContent = 'AVG';
-                avgRow.appendChild(avgTh);
-
-                for (const key of orderedStatKeys) {
-                    if (!statLabels[key]) continue;
-                    const td = document.createElement('td');
-                    let avgValue;
-                    if (key === 'fpts') {
-                        const totalPoints = gameLogsWithData.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
-                        avgValue = gameLogsWithData.length > 0 ? totalPoints / gameLogsWithData.length : 0;
-                        td.textContent = avgValue.toFixed(2).replace(/\.00$/, '');
-                    } else if (key === 'ypc') {
-                        const totalYards = totals['rush_yd'] || 0;
-                        const totalCarries = totals['rush_att'] || 0;
-                        avgValue = totalCarries > 0 ? totalYards / totalCarries : 0;
-                        td.textContent = avgValue.toFixed(2);
-                    } else if (key === 'yco_per_car') {
-                        const totalYco = totals['rush_yac'] || 0;
-                        const totalCarries = totals['rush_att'] || 0;
-                        avgValue = totalCarries > 0 ? totalYco / totalCarries : 0;
-                        td.textContent = avgValue.toFixed(1);
-                    } else if (key === 'btkl_per_car') {
-                        const totalBtkl = totals['rush_btkl'] || 0;
-                        const totalCarries = totals['rush_att'] || 0;
-                        avgValue = totalCarries > 0 ? totalBtkl / totalCarries : 0;
-                        td.textContent = avgValue.toFixed(2);
-                    } else if (key === 'pass_rtg') {
-                        const totalPassRtg = totals['pass_rtg'] || 0;
-                        avgValue = gameLogsWithData.length > 0 ? totalPassRtg / gameLogsWithData.length : 0;
-                        td.textContent = avgValue.toFixed(2).replace(/\.00$/, '');
-                    } else {
-                        const totalValue = totals[key] || 0;
-                        avgValue = gameLogsWithData.length > 0 ? totalValue / gameLogsWithData.length : 0;
-                        td.textContent = Number.isInteger(avgValue) ? String(avgValue) : avgValue.toFixed(2).replace(/\.00$/, '');
-                    }
-                    const rank = getSeasonStatRank(player.id, key, avgValue, scoringSettings, 'avg');
-                    td.style.color = getGameLogStatColor(rank);
-                    avgRow.appendChild(td);
-                }
-
-                tfoot.appendChild(avgRow);
                 table.appendChild(tfoot);
             }
 
@@ -2094,6 +2051,36 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             return '#767693';
         }
 
+        const PASSING_STATS = new Set(['pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'pass_int', 'pass_sack']);
+        const RUSHING_STATS = new Set(['rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car']);
+        const RECEIVING_STATS = new Set(['rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar']);
+
+        function meetsStatThreshold(pos, stats, key) {
+            if (RUSHING_STATS.has(key)) {
+                return pos === 'RB' && (stats?.rush_att || 0) >= 8;
+            }
+            if (RECEIVING_STATS.has(key)) {
+                return (pos === 'WR' || pos === 'TE') && (stats?.rec_tgt || 0) >= 3 && (stats?.rec || 0) >= 2;
+            }
+            if (PASSING_STATS.has(key)) {
+                return pos === 'QB' && (stats?.pass_att || 0) >= 10;
+            }
+            return true;
+        }
+
+        function getSeasonTotals(playerId) {
+            const totals = { rush_att: 0, rec_tgt: 0, rec: 0, pass_att: 0 };
+            for (const week in state.weeklyStats) {
+                const stats = state.weeklyStats[week][playerId];
+                if (!stats) continue;
+                totals.rush_att += stats['rush_att'] || 0;
+                totals.rec_tgt += stats['rec_tgt'] || 0;
+                totals.rec += stats['rec'] || 0;
+                totals.pass_att += stats['pass_att'] || 0;
+            }
+            return totals;
+        }
+
         function getStatValue(stats, key, scoringSettings) {
             if (!stats) return 0;
             if (key === 'fpts') return calculateFantasyPoints(stats, scoringSettings);
@@ -2105,10 +2092,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function getWeeklyStatRank(week, key, playerId, playerValue, scoringSettings) {
             const weeklyData = state.weeklyStats[week] || {};
+            const playerStats = weeklyData[playerId];
+            const playerInfo = state.players[playerId] || {};
+            const pos = playerInfo.position || playerInfo.pos;
+            if (!meetsStatThreshold(pos, playerStats, key)) return undefined;
             let rank = 1;
             for (const pid in weeklyData) {
                 if (pid === String(playerId)) continue;
-                const val = getStatValue(weeklyData[pid], key, scoringSettings);
+                const otherInfo = state.players[pid] || {};
+                const otherPos = otherInfo.position || otherInfo.pos;
+                if (otherPos !== pos) continue;
+                const stats = weeklyData[pid];
+                if (!meetsStatThreshold(otherPos, stats, key)) continue;
+                const val = getStatValue(stats, key, scoringSettings);
                 if (val > playerValue) rank++;
             }
             return rank;
@@ -2156,9 +2152,18 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         function getSeasonStatRank(playerId, key, playerValue, scoringSettings, type) {
+            const playerInfo = state.players[playerId] || {};
+            const pos = playerInfo.position || playerInfo.pos;
+            const playerTotals = getSeasonTotals(playerId);
+            if (!meetsStatThreshold(pos, playerTotals, key)) return undefined;
             let rank = 1;
             for (const pid in state.players) {
                 if (pid === String(playerId)) continue;
+                const otherInfo = state.players[pid] || {};
+                const otherPos = otherInfo.position || otherInfo.pos;
+                if (otherPos !== pos) continue;
+                const totals = getSeasonTotals(pid);
+                if (!meetsStatThreshold(otherPos, totals, key)) continue;
                 const val = calculateSeasonStatValue(pid, key, scoringSettings, type);
                 if (val > playerValue) rank++;
             }
