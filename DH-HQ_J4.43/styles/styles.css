@@ -2836,3 +2836,15 @@ font-weight: 500 !important;
         font-size: 0.75rem;
     }
 }
+
+.action-tooltip {
+    position: absolute;
+    background: rgba(0,0,0,0.85);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+}

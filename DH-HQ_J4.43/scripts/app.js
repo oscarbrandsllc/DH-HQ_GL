@@ -3,6 +3,22 @@ function hideLegend(){ try{ document.getElementById('legend-section')?.classList
 function showLegend(){ try{ document.getElementById('legend-section')?.classList.remove('hidden'); }catch(e){} }
 
 
+function showTooltip(target, message) {
+  const tooltip = document.createElement('div');
+  tooltip.className = 'action-tooltip';
+  tooltip.textContent = message;
+  document.body.appendChild(tooltip);
+  const rect = target.getBoundingClientRect();
+  tooltip.style.left = `${rect.left + rect.width / 2}px`;
+  tooltip.style.top = `${rect.top + window.scrollY - 8}px`;
+  requestAnimationFrame(() => {
+    tooltip.style.left = `${rect.left + rect.width / 2 - tooltip.offsetWidth / 2}px`;
+    tooltip.style.top = `${rect.top + window.scrollY - tooltip.offsetHeight - 8}px`;
+  });
+  setTimeout(() => tooltip.remove(), 2000);
+}
+
+
         // --- DOM Elements ---
         const usernameInput = document.getElementById('usernameInput');
         const fetchRostersButton = document.getElementById('fetchRostersButton');
@@ -1129,7 +1145,23 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         async function handlePlayerCompare(e) {
-            const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+            const button = e.target.closest('#comparePlayersButton');
+            const selectedPlayers = Object.entries(state.tradeBlock)
+                .flatMap(([teamName, assets]) =>
+                    assets.filter(a => a.pos !== 'DP').map(a => ({ ...a, teamName }))
+                );
+
+            if (selectedPlayers.length !== 2) {
+                if (button) showTooltip(button, 'Select exactly 2 players to compare');
+                return;
+            }
+
+            selectedPlayers.sort((a, b) => {
+                if (a.teamName === state.userTeamName) return -1;
+                if (b.teamName === state.userTeamName) return 1;
+                return 0;
+            });
+
             const comparisonModalBody = document.getElementById('comparison-modal-body');
             comparisonModalBody.innerHTML = '<p class="text-center p-4">Loading player comparison...</p>';
             openComparisonModal();
@@ -1222,57 +1254,90 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             thead.appendChild(tr);
 
-            // Table Body
             const statLabels = {
                 'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
                 'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
                 'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
-                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM',
+                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM'
             };
-            const allStatKeys = [...new Set(players.flatMap(p => p.gameLogs.flatMap(gl => Object.keys(gl.stats).concat('fpts', 'ypc'))))];
 
-            for (const statKey of allStatKeys) {
-                if (statLabels[statKey]) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${statLabels[statKey]}</td>`;
+            const statOrderByPos = {
+                QB: ['fpts','pass_att','pass_cmp','pass_yd','pass_td','pass_fd','pass_rtg','rush_att','rush_yd','ypc','rush_td','rush_fd','rec_tgt','rec','rec_yd','rec_td','rec_fd','fum_lost'],
+                RB: ['fpts','rush_att','rush_yd','ypc','rush_td','rush_fd','rush_btkl','rush_yac','yco_per_car','btkl_per_car','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','fum_lost'],
+                WR: ['fpts','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','rush_att','rush_yd','rush_td','ypc','fum_lost'],
+                TE: ['fpts','rec_tgt','rec','rec_yd','rec_td','rec_fd','rec_yar','rush_att','rush_yd','rush_td','ypc','fum_lost']
+            };
 
-                    let maxVal = -Infinity;
-                    let maxIndex = -1;
-                    const values = [];
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            const scoringSettings = league.scoring_settings;
 
-                    for (let i = 0; i < players.length; i++) {
-                        const player = players[i];
-                        const total = player.gameLogs.reduce((sum, week) => {
-                            let value = 0;
-                            if (statKey === 'fpts') {
-                                value = calculateFantasyPoints(week.stats, state.leagues.find(l => l.league_id === state.currentLeagueId).scoring_settings);
-                            } else if (statKey === 'ypc') {
-                                value = (week.stats['rush_att'] || 0) > 0 ? ((week.stats['rush_yd'] || 0) / week.stats['rush_att']) : 0;
-                            } else {
-                                value = week.stats[statKey] || 0;
-                            }
-                            return sum + value;
-                        }, 0);
-
-                        values.push(total);
-                        if (total > maxVal) {
-                            maxVal = total;
-                            maxIndex = i;
-                        }
+            players.forEach(player => {
+                const totals = {};
+                player.gameLogs.forEach(week => {
+                    for (const key in week.stats) {
+                        const val = parseFloat(week.stats[key]);
+                        if (!isNaN(val)) totals[key] = (totals[key] || 0) + val;
                     }
+                    totals.fpts = (totals.fpts || 0) + calculateFantasyPoints(week.stats, scoringSettings);
+                });
+                totals.ypc = (totals.rush_att || 0) > 0 ? (totals.rush_yd || 0) / totals.rush_att : 0;
+                totals.yco_per_car = (totals.rush_att || 0) > 0 ? (totals.rush_yac || 0) / totals.rush_att : 0;
+                totals.btkl_per_car = (totals.rush_att || 0) > 0 ? (totals.rush_btkl || 0) / totals.rush_att : 0;
+                totals.pass_rtg = player.gameLogs.length > 0 ? (totals.pass_rtg || 0) / player.gameLogs.length : 0;
+                player.totals = totals;
+            });
 
-                    values.forEach((val, i) => {
-                        const td = document.createElement('td');
-                        td.textContent = val.toFixed(2).replace(/\.00$/, '');
-                        if (i === maxIndex) {
-                            td.classList.add('best-stat');
-                        }
-                        row.appendChild(td);
-                    });
+            const allStatKeys = [...new Set(players.flatMap(p => Object.keys(p.totals)))];
 
-                    tbody.appendChild(row);
+            const primaryPos = players[0].pos;
+            const primaryOrder = statOrderByPos[primaryPos] || [];
+            const otherOrders = players.slice(1).map(p => statOrderByPos[p.pos] || []);
+            const sharedStats = allStatKeys.filter(k => [primaryOrder, ...otherOrders].every(set => set.includes(k)));
+            const primaryExclusive = primaryOrder.filter(k => allStatKeys.includes(k) && !sharedStats.includes(k));
+            const secondaryExclusive = [];
+            otherOrders.forEach(order => {
+                order.forEach(k => {
+                    if (!primaryOrder.includes(k) && allStatKeys.includes(k) && !sharedStats.includes(k) && !secondaryExclusive.includes(k)) {
+                        secondaryExclusive.push(k);
+                    }
+                });
+            });
+            const remaining = allStatKeys.filter(k => !primaryOrder.includes(k) && !secondaryExclusive.includes(k) && !sharedStats.includes(k));
+            const orderedStats = [
+                ...sharedStats.filter(k => primaryOrder.includes(k)).sort((a,b) => primaryOrder.indexOf(a)-primaryOrder.indexOf(b)),
+                ...primaryExclusive,
+                ...secondaryExclusive,
+                ...remaining
+            ];
+
+            orderedStats.forEach(statKey => {
+                if (!statLabels[statKey]) return;
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${statLabels[statKey]}</td>`;
+
+                let maxVal = -Infinity;
+                let maxIndex = -1;
+                const values = [];
+
+                for (let i = 0; i < players.length; i++) {
+                    const val = players[i].totals[statKey] || 0;
+                    values.push(val);
+                    if (val > maxVal) { maxVal = val; maxIndex = i; }
                 }
-            }
+
+                values.forEach((val, i) => {
+                    const td = document.createElement('td');
+                    let displayValue;
+                    if (statKey === 'yco_per_car') displayValue = val.toFixed(1);
+                    else if (['btkl_per_car','ypc','pass_rtg'].includes(statKey)) displayValue = val.toFixed(2).replace(/\.00$/, '');
+                    else displayValue = Number.isInteger(val) ? String(val) : val.toFixed(2).replace(/\.00$/, '');
+                    td.textContent = displayValue;
+                    if (i === maxIndex) td.classList.add('best-stat');
+                    row.appendChild(td);
+                });
+
+                tbody.appendChild(row);
+            });
 
             table.appendChild(thead);
             table.appendChild(tbody);
@@ -1630,7 +1695,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (comparePlayersButton) {
                 const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
                 const playerCount = selectedPlayers.length;
-                comparePlayersButton.disabled = playerCount < 2 || playerCount > 4;
+                comparePlayersButton.disabled = playerCount < 2;
             }
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
