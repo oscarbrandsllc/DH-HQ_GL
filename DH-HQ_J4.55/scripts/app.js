@@ -1181,16 +1181,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             // Player Names Row
             const playerNamesRow = document.createElement('div');
             playerNamesRow.className = 'player-names-row';
-            playerNamesRow.style.display = 'flex';
-            playerNamesRow.style.width = '100%';
             players.forEach(player => {
                 const fullPlayer = state.players[player.id];
                 const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
 
                 const headerContainer = document.createElement('div');
                 headerContainer.className = 'player-name-header-container';
-                headerContainer.style.flex = '1';
-                headerContainer.style.textAlign = 'center';
 
                 const nameDiv = document.createElement('div');
                 nameDiv.className = 'player-name-header';
@@ -1199,10 +1195,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 const gameLogLink = document.createElement('span');
                 gameLogLink.className = 'game-log-link';
                 gameLogLink.textContent = 'Game Log';
-                gameLogLink.style.cursor = 'pointer';
-                gameLogLink.style.fontSize = '0.8rem';
-                gameLogLink.style.color = '#8ab4f8';
-                gameLogLink.style.textDecoration = 'underline';
                 gameLogLink.onclick = () => {
                     state.isGameLogModalOpenFromComparison = true;
                     handlePlayerNameClick(player);
@@ -1217,8 +1209,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
-            summaryChipsRow.style.marginLeft = '0.5rem';
-            summaryChipsRow.style.marginRight = '0.5rem';
             players.forEach(player => {
                 const summaryChipsContainer = document.createElement('div');
                 summaryChipsContainer.className = 'summary-chips-container';
@@ -1260,8 +1250,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             // Detailed Stats Table
             const table = document.createElement('table');
             table.className = 'player-comparison-table';
-            table.style.width = '100%';
-            table.style.tableLayout = 'fixed';
             const thead = document.createElement('thead');
             const tbody = document.createElement('tbody');
 
@@ -1269,14 +1257,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const tr = document.createElement('tr');
             const statTh = document.createElement('th');
             statTh.textContent = 'STAT';
-            statTh.style.width = '20%';
+            statTh.className = 'stat-header';
             tr.appendChild(statTh);
             players.forEach(player => {
                 const fullPlayer = state.players[player.id];
                 const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
                 const th = document.createElement('th');
+                th.className = 'player-header';
                 th.innerHTML = `<h4>${playerName}</h4><span class="player-pos-team">${player.pos} - ${fullPlayer.team || 'FA'}</span>`;
-                th.style.width = '35%';
                 tr.appendChild(th);
             });
             thead.appendChild(tr);
@@ -1428,8 +1416,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             const tableContainer = document.createElement('div');
             tableContainer.className = 'comparison-table-container';
-            tableContainer.style.marginLeft = '0.5rem';
-            tableContainer.style.marginRight = '0.5rem';
             tableContainer.appendChild(table);
 
             container.appendChild(tableContainer);
@@ -1439,16 +1425,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const keyContainer = document.getElementById('comparison-stats-key-container');
 
             if (footer && keyContainer) {
-                keyContainer.style.position = 'absolute';
-                keyContainer.style.bottom = '45px';
-                keyContainer.style.left = '1rem';
-                keyContainer.style.right = '1rem';
-                keyContainer.style.maxHeight = 'calc(100% - 150px)';
-                keyContainer.style.overflowY = 'auto';
-                keyContainer.style.background = 'rgba(13, 14, 27, 0.95)';
-                keyContainer.style.padding = '1rem';
-                keyContainer.style.border = '1px solid #444';
-
+                // Styles moved to CSS
                 footer.innerHTML = `
                     <div class="key-chip modal-info-btn">
                         <i class="fa-solid fa-key"></i>
@@ -1826,9 +1803,9 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (comparePlayersButton) {
                 const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
                 if (selectedPlayers.length === 2) {
-                    comparePlayersButton.style.opacity = '1.0';
+                    comparePlayersButton.classList.add('enabled');
                 } else {
-                    comparePlayersButton.style.opacity = '0.5';
+                    comparePlayersButton.classList.remove('enabled');
                 }
             }
 
