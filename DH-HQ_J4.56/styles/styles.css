@@ -833,7 +833,12 @@
             }
         .trade-header-center { flex: 1 1 0; text-align: center; 
             }
-        .trade-header-right { flex: 1 1 0; text-align: right; 
+        .trade-header-right {
+            flex: 1 1 0;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.5rem;
             }
                 
          .trade-header-left i {
@@ -879,9 +884,6 @@
             padding: 0px 8px;
             cursor: pointer;
             transition: all 0.2s;
-            margin-top: 5px;
-            margin-right: 3px;
-            margin-left: 10px;
             border: 1px solid  var(--color-panel-border-glow);
             border-radius: 6px;
         }
@@ -2735,8 +2737,7 @@ font-weight: 500 !important;
     }
     
     .player-comparison-table {
-        width: 99%;
-        margin: 0 auto;
+        width: 100%;
         border-collapse: collapse;
         font-size: 0.8rem;
         table-layout: fixed;
@@ -2811,7 +2812,7 @@ font-weight: 500 !important;
     }
     /* · · Table Container · · */
     .comparison-table-container {
-        overflow-x: auto;
+        overflow-x: hidden;
         overflow-y: auto;
         width: 100%;
         flex: 1;
@@ -2882,8 +2883,6 @@ font-weight: 500 !important;
         color: #8787Af;
         font-size: 0.9rem;
         line-height: 0.9rem;
-        margin-right: 5px;
-        margin-top: 5px;
         padding: 1px 8px;
         opacity: 0.4;
         transition: opacity 0.1s ease-in-out;
