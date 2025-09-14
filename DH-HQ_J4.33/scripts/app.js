@@ -970,6 +970,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             }
             thead.appendChild(headerRow);
 
+            const gameLogsWithData = [];
             gameLogs.sort((a, b) => parseInt(a.week) - parseInt(b.week)).forEach(weekStats => {
                 let hasData = false;
                 const row = document.createElement('tr');
@@ -1003,11 +1004,72 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                 if (hasData) {
                     tbody.appendChild(row);
+                    gameLogsWithData.push(weekStats);
                 }
             });
 
             table.appendChild(thead);
             table.appendChild(tbody);
+
+            // Add table footer for totals
+            if (gameLogsWithData.length > 0) {
+                const tfoot = document.createElement('tfoot');
+                const footerRow = document.createElement('tr');
+                const totalTh = document.createElement('th');
+                totalTh.textContent = 'Total';
+                footerRow.appendChild(totalTh);
+
+                const totals = {};
+                gameLogsWithData.forEach(weekStats => {
+                    for (const key in weekStats.stats) {
+                        totals[key] = (totals[key] || 0) + (weekStats.stats[key] || 0);
+                    }
+                });
+
+                for (const key of orderedStatKeys) {
+                    if (!statLabels[key]) continue;
+
+                    const td = document.createElement('td');
+                    let displayValue;
+
+                    if (key === 'fpts') {
+                        const totalPoints = gameLogsWithData.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
+                        displayValue = totalPoints.toFixed(2).replace(/\.00$/, '');
+                    } else if (key === 'ypc') {
+                        const totalYards = totals['rush_yd'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgYpc = totalCarries > 0 ? totalYards / totalCarries : 0;
+                        displayValue = avgYpc.toFixed(2);
+                    } else if (key === 'yco_per_car') {
+                        const totalYco = totals['rush_yac'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgYcoPerCar = totalCarries > 0 ? totalYco / totalCarries : 0;
+                        displayValue = avgYcoPerCar.toFixed(1);
+                    } else if (key === 'btkl_per_car') {
+                        const totalBtkl = totals['rush_btkl'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgBtklPerCar = totalCarries > 0 ? totalBtkl / totalCarries : 0;
+                        displayValue = avgBtklPerCar.toFixed(2);
+                    } else if (key === 'pass_rtg') {
+                     // Note: Averaging weekly passer ratings is not statistically perfect.
+                     // A true season passer rating requires calculating from season totals
+                     // of attempts, completions, yards, TDs, and INTs.
+                     // However, INTs are not provided by the weekly stats API endpoint.
+                     // Therefore, we use the available weekly rating and average it.
+                         const totalPassRtg = totals['pass_rtg'] || 0;
+                         const avgPassRtg = gameLogsWithData.length > 0 ? totalPassRtg / gameLogsWithData.length : 0;
+                         displayValue = avgPassRtg.toFixed(2).replace(/\.00$/, '');
+                    } else {
+                        const totalValue = totals[key] || 0;
+                        displayValue = Number.isInteger(totalValue) ? String(totalValue) : totalValue.toFixed(2).replace(/\.00$/, '');
+                    }
+                    td.textContent = displayValue;
+                    footerRow.appendChild(td);
+                }
+                tfoot.appendChild(footerRow);
+                table.appendChild(tfoot);
+            }
+
             container.appendChild(table);
             modalBody.appendChild(container);
             modalBody.scrollLeft = 0;
