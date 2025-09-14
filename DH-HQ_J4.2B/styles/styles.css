@@ -2243,6 +2243,8 @@ font-weight: 500 !important;
       transform: scale(0.95);
       opacity: 0;
       transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+      display: flex;
+      flex-direction: column;
     }
     
     #game-logs-modal:not(.hidden) .modal-content, #player-comparison-modal:not(.hidden) .modal-content {
@@ -2328,17 +2330,23 @@ font-weight: 500 !important;
       text-align: center;
     }
     
-    #modal-body {
+    .modal-body {
       color: #8086b0;
       overflow-x: auto;
-      overflow-y: auto;
       border-radius: 8px;
-      max-height: 60vh;
+      flex: 1;
+      min-height: 0;
       scrollbar-width: none;
+      display: flex;
+      flex-direction: column;
     }
 
     #modal-body:hover {
       scrollbar-width: thin;
+    }
+
+    #game-logs-modal .modal-body {
+        overflow-y: auto;
     }
 
     #modal-body::-webkit-scrollbar {
@@ -2663,11 +2671,19 @@ font-weight: 500 !important;
     gap: 0.5rem;
 }
 
-.comparison-header-row, .comparison-summary-chips-row {
+.comparison-header-row {
     display: grid;
     grid-template-columns: 100px repeat(4, 1fr);
     gap: 0.5rem;
     align-items: center;
+}
+
+.comparison-summary-chips-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
 }
 
 .player-header {
@@ -2759,7 +2775,10 @@ font-weight: 500 !important;
 
 .comparison-table-container {
     overflow-x: auto;
+    overflow-y: auto;
     width: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 @media (max-width: 768px) {

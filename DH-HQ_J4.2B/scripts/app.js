@@ -1029,6 +1029,14 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         function renderPlayerComparison(players) {
+            const modalHeader = document.querySelector('#player-comparison-modal #comparison-modal-header h3');
+            if (modalHeader) {
+                const playerNames = players.map(p => {
+                    const fullPlayer = state.players[p.id];
+                    return fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : p.label;
+                }).join(' vs. ');
+                modalHeader.textContent = playerNames;
+            }
             const comparisonModalBody = document.getElementById('comparison-modal-body');
             comparisonModalBody.innerHTML = ''; // Clear existing content
 
@@ -1805,6 +1813,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         function closeComparisonModal() {
             if (playerComparisonModal) {
                 playerComparisonModal.classList.add('hidden');
+                const modalHeader = document.querySelector('#player-comparison-modal #comparison-modal-header h3');
+                if (modalHeader) {
+                    modalHeader.textContent = 'Player Comparison';
+                }
             }
         }
 
