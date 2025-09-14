@@ -1214,16 +1214,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 summaryChipsContainer.className = 'summary-chips-container';
                 summaryChipsContainer.innerHTML = `
                     <div class="summary-chip">
-                        <h4>FPTS / PPG</h4>
+                        <h4>FPTS</h4>
                         <div class="chip-values">
-                            <span style="color: ${getRankColor(player.overallRank)}">${player.total_pts}</span>
+                            <span>${player.total_pts}</span>
                             <span class="chip-separator">/</span>
-                            <span style="color: ${getRankColor(player.ppgOverallRank)}">${player.ppg}</span>
-                        </div>
-                    </div>
-                    <div class="summary-chip">
-                        <h4>FPTS RKs</h4>
-                        <div class="chip-values">
                             <span style="color: ${getRankColor(player.overallRank)}">#${player.overallRank}</span>
                             <span class="chip-separator">/</span>
                             <span class="pos-rank-container">
@@ -1233,8 +1227,10 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                         </div>
                     </div>
                     <div class="summary-chip">
-                        <h4>PPG RKs</h4>
+                        <h4>PPG</h4>
                         <div class="chip-values">
+                            <span>${player.ppg}</span>
+                            <span class="chip-separator">/</span>
                             <span style="color: ${getRankColor(player.ppgOverallRank)}">#${player.ppgOverallRank}</span>
                             <span class="chip-separator">/</span>
                             <span class="pos-rank-container">
@@ -2129,12 +2125,34 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function openComparisonModal() {
             if (playerComparisonModal) {
+                const modalContent = playerComparisonModal.querySelector('.modal-content');
+                const header = document.getElementById('header-container');
+                const tradePreview = document.getElementById('tradeSimulator');
+
+                if (modalContent && header && tradePreview) {
+                    const headerRect = header.getBoundingClientRect();
+                    const tradePreviewRect = tradePreview.getBoundingClientRect();
+
+                    const topPosition = headerRect.bottom + 10;
+                    const availableHeight = tradePreviewRect.top - topPosition - 10;
+
+                    modalContent.style.top = `${topPosition}px`;
+                    modalContent.style.height = `${availableHeight}px`;
+                    modalContent.style.bottom = 'auto';
+                }
+
                 playerComparisonModal.classList.remove('hidden');
             }
         }
 
         function closeComparisonModal() {
             if (playerComparisonModal) {
+                const modalContent = playerComparisonModal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.style.top = '';
+                    modalContent.style.height = '';
+                    modalContent.style.bottom = '';
+                }
                 playerComparisonModal.classList.add('hidden');
             }
         }

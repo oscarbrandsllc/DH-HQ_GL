@@ -2211,15 +2211,16 @@ font-weight: 500 !important;
 /* ⬇︎  GM LOG MODAL  ⬇︎ */
     #game-logs-modal, #player-comparison-modal {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      inset: 0;
       z-index: 100;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: opacity 0.2s ease-in-out;
+    }
+
+    #player-comparison-modal {
+        pointer-events: none;
     }
     
     #game-logs-modal.hidden {
@@ -2236,6 +2237,10 @@ font-weight: 500 !important;
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
     }
+
+    #player-comparison-modal .modal-overlay {
+      display: none;
+    }
     
     .modal-content {
       position: relative;
@@ -2250,8 +2255,12 @@ font-weight: 500 !important;
       transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
     }
     
-    #game-logs-modal:not(.hidden) .modal-content, #player-comparison-modal:not(.hidden) .modal-content {
+    #game-logs-modal:not(.hidden) .modal-content {
         transform: scale(1);
+        opacity: 1;
+    }
+    #player-comparison-modal:not(.hidden) .modal-content {
+        transform: translateX(-50%) scale(1);
         opacity: 1;
     }
     
@@ -2669,10 +2678,15 @@ font-weight: 500 !important;
     
     /* ⬇︎ PLAYER-COMP MODAL ⬇︎ */
     #player-comparison-modal .modal-content {
+        position: absolute;
         width: 95%;
-        max-width: 1200px;
+        max-width: 900px;
         display: flex;
         flex-direction: column;
+        pointer-events: auto;
+        left: 50%;
+        transform: translateX(-50%) scale(0.95);
+        /* top and height will be set by JS */
     }
     /*?*/
     #player-comparison-modal .modal-body {
@@ -2698,6 +2712,10 @@ font-weight: 500 !important;
     .player-name-header-container {
         flex: 1;
         text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.1rem;
     }
     
     .player-name-header {
@@ -2735,7 +2753,7 @@ font-weight: 500 !important;
     }
     
     .player-comparison-table {
-        width: 99%;
+        width: 100%;
         margin: 0 auto;
         border-collapse: collapse;
         font-size: 0.8rem;
@@ -2811,7 +2829,7 @@ font-weight: 500 !important;
     }
     /* · · Table Container · · */
     .comparison-table-container {
-        overflow-x: auto;
+        overflow-x: hidden;
         overflow-y: auto;
         width: 100%;
         flex: 1;
@@ -2898,7 +2916,6 @@ font-weight: 500 !important;
     #player-comparison-modal .modal-content {
         padding: 0.5rem;
         width: 98%;
-        max-height: 90vh;
     }
 
     #player-comparison-modal .player-comparison-table {
