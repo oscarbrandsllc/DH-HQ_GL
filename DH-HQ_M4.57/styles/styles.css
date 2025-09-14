@@ -2709,6 +2709,31 @@ font-weight: 500 !important;
         font-size: 1rem;
         font-weight: 700;
         color: var(--color-text-primary);
+        margin-bottom: 0;
+        line-height: 1;
+    }
+
+    .game-log-link {
+        cursor: pointer;
+        font-size: 0.8rem;
+        color: #9096C0fb;
+        text-decoration: underline;
+        text-decoration-color: #9096D0af;
+        line-height: 1;
+        margin-top: 0.1rem;
+    }
+
+    #close-comparison-key {
+        cursor: pointer;
+        float: right;
+        font-size: 1.2rem;
+        line-height: 1;
+        color: var(--color-text-secondary);
+        transition: color 0.2s ease;
+    }
+
+    #close-comparison-key:hover {
+        color: var(--color-text-primary);
     }
     
     .comparison-summary-chips-row {
@@ -2795,13 +2820,17 @@ font-weight: 500 !important;
          }
     
     #player-comparison-modal .summary-chip h4 {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         font-weight: 700;
         color: var(--color-text-secondary);
         margin-bottom: 0.1rem;
         text-transform: uppercase;
         border-bottom: 1px solid var(--color-panel-border);
         padding-bottom: 0.1rem;
+    }
+
+    .chip-header-value {
+        font-size: 0.8rem;
     }
     
     #player-comparison-modal .chip-values {
