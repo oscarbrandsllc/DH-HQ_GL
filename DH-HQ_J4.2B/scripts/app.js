@@ -1035,11 +1035,19 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const container = document.createElement('div');
             container.className = 'player-comparison-container';
 
+            // Player names row at top of modal
+            const namesContainer = document.getElementById('comparison-player-names');
+            if (namesContainer) {
+                namesContainer.innerHTML = players.map(p => {
+                    const full = state.players[p.id];
+                    const name = full ? `${full.first_name} ${full.last_name}` : p.label;
+                    return `<span class="comparison-player-name">${name}</span>`;
+                }).join('<span class="name-vs">vs</span>');
+            }
+
             // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
-            summaryChipsRow.style.gridTemplateColumns = `100px repeat(${players.length}, 1fr)`;
-            summaryChipsRow.appendChild(document.createElement('div')); // Empty cell for alignment
             players.forEach(player => {
                 const summaryChipsContainer = document.createElement('div');
                 summaryChipsContainer.className = 'summary-chips-container';

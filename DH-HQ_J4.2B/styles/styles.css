@@ -2243,6 +2243,9 @@ font-weight: 500 !important;
       transform: scale(0.95);
       opacity: 0;
       transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
     
     #game-logs-modal:not(.hidden) .modal-content, #player-comparison-modal:not(.hidden) .modal-content {
@@ -2328,37 +2331,34 @@ font-weight: 500 !important;
       text-align: center;
     }
     
-    #modal-body {
-      color: #8086b0;
-      overflow-x: auto;
-      overflow-y: auto;
-      border-radius: 8px;
-      max-height: 60vh;
-      scrollbar-width: none;
-    }
-
-    #modal-body:hover {
-      scrollbar-width: thin;
-    }
-
-    #modal-body::-webkit-scrollbar {
-      width: 0;
-      height: 0;
-    }
-
-    #modal-body:hover::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
     /* · · Table Styling · · */
     .modal-body{
         position: relative;
+        flex: 1 1 auto;
+        color: #8086b0;
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 60vh;
         background: rgba(5, 0, 30, 0.081);
         backdrop-filter: blur(1px) saturate(140%);
         border: 1px solid rgba(250, 250, 250, 0.1);
         border-radius: 9px;
         box-shadow: 0 8px 32px rgba(31, 38, 105, 0.15), inset 0 6px 20px rgba(255, 255, 255, 0.013);
+        scrollbar-width: none;
+    }
+
+    .modal-body:hover {
+        scrollbar-width: thin;
+    }
+
+    .modal-body::-webkit-scrollbar {
+        width: 0;
+        height: 0;
+    }
+
+    .modal-body:hover::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
     }
 
     .modal-body::after {
@@ -2661,13 +2661,21 @@ font-weight: 500 !important;
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    height: 100%;
 }
 
-.comparison-header-row, .comparison-summary-chips-row {
+.comparison-header-row {
     display: grid;
     grid-template-columns: 100px repeat(4, 1fr);
     gap: 0.5rem;
     align-items: center;
+}
+
+.comparison-summary-chips-row {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .player-header {
@@ -2689,6 +2697,7 @@ font-weight: 500 !important;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    align-items: center;
 }
 
 .player-comparison-table {
@@ -2757,9 +2766,35 @@ font-weight: 500 !important;
     font-weight: 400;
 }
 
+#player-comparison-modal .modal-body {
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
 .comparison-table-container {
     overflow-x: auto;
+    overflow-y: auto;
     width: 100%;
+    flex: 1 1 auto;
+}
+
+#comparison-player-names {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}
+
+.comparison-player-name {
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.name-vs {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
 }
 
 @media (max-width: 768px) {
@@ -2782,6 +2817,7 @@ font-weight: 500 !important;
         display: flex;
         flex-wrap: wrap;
         gap: 0.5rem;
+        justify-content: center;
     }
 
     #player-comparison-modal .summary-chips-container {
