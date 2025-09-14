@@ -1035,11 +1035,22 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             const container = document.createElement('div');
             container.className = 'player-comparison-container';
 
+            // Player Names Row
+            const playerNamesRow = document.createElement('div');
+            playerNamesRow.className = 'player-names-row';
+            players.forEach(player => {
+                const fullPlayer = state.players[player.id];
+                const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'player-name-header';
+                nameDiv.textContent = playerName;
+                playerNamesRow.appendChild(nameDiv);
+            });
+            container.appendChild(playerNamesRow);
+
             // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
-            summaryChipsRow.style.gridTemplateColumns = `100px repeat(${players.length}, 1fr)`;
-            summaryChipsRow.appendChild(document.createElement('div')); // Empty cell for alignment
             players.forEach(player => {
                 const summaryChipsContainer = document.createElement('div');
                 summaryChipsContainer.className = 'summary-chips-container';

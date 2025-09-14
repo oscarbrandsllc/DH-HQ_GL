@@ -2655,23 +2655,48 @@ font-weight: 500 !important;
 #player-comparison-modal .modal-content {
     width: 95%;
     max-width: 1200px;
+    display: flex;
+    flex-direction: column;
+}
+
+#player-comparison-modal .modal-body {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .player-comparison-container {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    flex: 1;
+    min-height: 0;
 }
 
-.comparison-header-row, .comparison-summary-chips-row {
-    display: grid;
-    grid-template-columns: 100px repeat(4, 1fr);
-    gap: 0.5rem;
-    align-items: center;
+.player-names-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem 0;
+    gap: 1rem;
 }
 
-.player-header {
+.player-name-header {
+    flex: 1;
     text-align: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.comparison-summary-chips-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    padding: 0.5rem 0;
+    border-top: 1px solid var(--color-panel-border);
+    border-bottom: 1px solid var(--color-panel-border);
 }
 
 .player-header h4 {
@@ -2759,7 +2784,10 @@ font-weight: 500 !important;
 
 .comparison-table-container {
     overflow-x: auto;
+    overflow-y: auto;
     width: 100%;
+    flex: 1;
+    min-height: 0;
 }
 
 @media (max-width: 768px) {
