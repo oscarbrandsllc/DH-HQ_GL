@@ -1038,8 +1038,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
-            summaryChipsRow.style.gridTemplateColumns = `100px repeat(${players.length}, 1fr)`;
-            summaryChipsRow.appendChild(document.createElement('div')); // Empty cell for alignment
             players.forEach(player => {
                 const summaryChipsContainer = document.createElement('div');
                 summaryChipsContainer.className = 'summary-chips-container';
