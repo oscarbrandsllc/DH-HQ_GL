@@ -2703,12 +2703,14 @@ font-weight: 500 !important;
     .player-name-header-container {
         flex: 1;
         text-align: center;
+        padding-top: 0.5rem;
     }
     
     .player-name-header {
         font-size: 1rem;
         font-weight: 700;
         color: var(--color-text-primary);
+        margin-bottom: 2px;
     }
     
     .comparison-summary-chips-row {
@@ -2795,13 +2797,17 @@ font-weight: 500 !important;
          }
     
     #player-comparison-modal .summary-chip h4 {
-        font-size: 0.7rem;
+        font-size: 0.8rem;
         font-weight: 700;
         color: var(--color-text-secondary);
         margin-bottom: 0.1rem;
         text-transform: uppercase;
         border-bottom: 1px solid var(--color-panel-border);
         padding-bottom: 0.1rem;
+    }
+
+    .chip-header-value {
+        font-size: 0.8rem;
     }
     
     #player-comparison-modal .chip-values {
