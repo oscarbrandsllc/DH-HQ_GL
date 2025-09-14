@@ -1129,7 +1129,23 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         async function handlePlayerCompare(e) {
-            const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+            const btn = e?.currentTarget || e?.target;
+            const selectedPlayers = Object.entries(state.tradeBlock)
+                .flatMap(([teamName, assets]) => {
+                    const team = state.currentTeams?.find(t => t.teamName === teamName);
+                    const isUser = team?.isUserTeam;
+                    return assets
+                        .filter(asset => asset.pos !== 'DP')
+                        .map(asset => ({ ...asset, teamName, isUser }));
+                });
+
+            if (selectedPlayers.length !== 2) {
+                if (btn) showTooltip(btn, 'Select exactly 2 players to compare');
+                return;
+            }
+
+            selectedPlayers.sort((a, b) => (b.isUser ? 1 : 0) - (a.isUser ? 1 : 0));
+
             const comparisonModalBody = document.getElementById('comparison-modal-body');
             comparisonModalBody.innerHTML = '<p class="text-center p-4">Loading player comparison...</p>';
             openComparisonModal();
@@ -1145,12 +1161,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function renderPlayerComparison(players) {
             const comparisonModalBody = document.getElementById('comparison-modal-body');
-            comparisonModalBody.innerHTML = ''; // Clear existing content
+            comparisonModalBody.innerHTML = '';
 
             const container = document.createElement('div');
             container.className = 'player-comparison-container';
 
-            // Player Names Row
             const playerNamesRow = document.createElement('div');
             playerNamesRow.className = 'player-names-row';
             players.forEach(player => {
@@ -1163,7 +1178,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             container.appendChild(playerNamesRow);
 
-            // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
             players.forEach(player => {
@@ -1204,13 +1218,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             container.appendChild(summaryChipsRow);
 
-            // Detailed Stats Table
             const table = document.createElement('table');
             table.className = 'player-comparison-table';
             const thead = document.createElement('thead');
             const tbody = document.createElement('tbody');
 
-            // Table Header
             const tr = document.createElement('tr');
             tr.innerHTML = '<th>STAT</th>';
             players.forEach(player => {
@@ -1222,57 +1234,111 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             thead.appendChild(tr);
 
-            // Table Body
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            const scoringSettings = league.scoring_settings;
+
             const statLabels = {
-                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
-                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
-                'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
-                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM',
+                'fpts': 'FPTS',
+                'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D',
+                'pass_rtg': 'paRTG', 'pass_int': 'INT', 'pass_sack': 'SACK',
+                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D',
+                'rush_btkl': 'BTKL', 'rush_yac': 'YCO', 'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR',
+                'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
+                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum': 'FUM'
             };
-            const allStatKeys = [...new Set(players.flatMap(p => p.gameLogs.flatMap(gl => Object.keys(gl.stats).concat('fpts', 'ypc'))))];
 
-            for (const statKey of allStatKeys) {
-                if (statLabels[statKey]) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${statLabels[statKey]}</td>`;
-
-                    let maxVal = -Infinity;
-                    let maxIndex = -1;
-                    const values = [];
-
-                    for (let i = 0; i < players.length; i++) {
-                        const player = players[i];
-                        const total = player.gameLogs.reduce((sum, week) => {
-                            let value = 0;
-                            if (statKey === 'fpts') {
-                                value = calculateFantasyPoints(week.stats, state.leagues.find(l => l.league_id === state.currentLeagueId).scoring_settings);
-                            } else if (statKey === 'ypc') {
-                                value = (week.stats['rush_att'] || 0) > 0 ? ((week.stats['rush_yd'] || 0) / week.stats['rush_att']) : 0;
-                            } else {
-                                value = week.stats[statKey] || 0;
-                            }
-                            return sum + value;
-                        }, 0);
-
-                        values.push(total);
-                        if (total > maxVal) {
-                            maxVal = total;
-                            maxIndex = i;
-                        }
-                    }
-
-                    values.forEach((val, i) => {
-                        const td = document.createElement('td');
-                        td.textContent = val.toFixed(2).replace(/\.00$/, '');
-                        if (i === maxIndex) {
-                            td.classList.add('best-stat');
-                        }
-                        row.appendChild(td);
-                    });
-
-                    tbody.appendChild(row);
-                }
+            function getStatOrder(pos) {
+                const qbStatOrder = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'pass_int', 'pass_sack', 'rush_yd', 'rush_td', 'rush_att', 'ypc', 'fum'];
+                const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'fum'];
+                const wrTeStatOrder = ['fpts', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum'];
+                if (pos === 'QB') return qbStatOrder;
+                if (pos === 'RB') return rbStatOrder;
+                if (pos === 'WR' || pos === 'TE') return wrTeStatOrder;
+                return qbStatOrder;
             }
+
+            const userOrder = getStatOrder(players[0].pos);
+            const otherOrders = players.slice(1).map(p => getStatOrder(p.pos));
+            const commonStats = userOrder.filter(k => otherOrders.every(o => o.includes(k)));
+            const userOnlyStats = userOrder.filter(k => !commonStats.includes(k));
+            const otherOnlyStats = [];
+            otherOrders.forEach(order => {
+                order.forEach(k => {
+                    if (!commonStats.includes(k) && !userOrder.includes(k) && !otherOnlyStats.includes(k)) {
+                        otherOnlyStats.push(k);
+                    }
+                });
+            });
+            const orderedStatKeys = [...commonStats, ...userOnlyStats, ...otherOnlyStats];
+
+            const playerTotals = players.map(player => {
+                const totals = {};
+                player.gameLogs.forEach(week => {
+                    for (const key in week.stats) {
+                        const val = parseFloat(week.stats[key]);
+                        if (!isNaN(val)) totals[key] = (totals[key] || 0) + val;
+                    }
+                });
+                const fptsTotal = player.gameLogs.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
+                return { totals, weeks: player.gameLogs.length, fptsTotal };
+            });
+
+            orderedStatKeys.forEach(statKey => {
+                if (!statLabels[statKey]) return;
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${statLabels[statKey]}</td>`;
+
+                const values = [];
+                const displays = [];
+
+                for (let i = 0; i < players.length; i++) {
+                    const { totals, weeks, fptsTotal } = playerTotals[i];
+                    let num;
+                    switch (statKey) {
+                        case 'fpts':
+                            num = fptsTotal;
+                            break;
+                        case 'ypc':
+                            const yards = totals['rush_yd'] || 0;
+                            const carries = totals['rush_att'] || 0;
+                            num = carries > 0 ? yards / carries : 0;
+                            break;
+                        case 'yco_per_car':
+                            const yco = totals['rush_yac'] || 0;
+                            const car = totals['rush_att'] || 0;
+                            num = car > 0 ? yco / car : 0;
+                            break;
+                        case 'btkl_per_car':
+                            const btkl = totals['rush_btkl'] || 0;
+                            const car2 = totals['rush_att'] || 0;
+                            num = car2 > 0 ? btkl / car2 : 0;
+                            break;
+                        case 'pass_rtg':
+                            const totalRtg = totals['pass_rtg'] || 0;
+                            num = weeks > 0 ? totalRtg / weeks : 0;
+                            break;
+                        default:
+                            num = totals[statKey] || 0;
+                    }
+                    values.push(num);
+                    let display;
+                    if (statKey === 'fpts') display = num.toFixed(2).replace(/\.00$/, '');
+                    else if (statKey === 'yco_per_car') display = num.toFixed(1).replace(/\.0$/, '');
+                    else if (['ypc', 'btkl_per_car', 'pass_rtg'].includes(statKey)) display = num.toFixed(2).replace(/\.00$/, '');
+                    else display = Number.isInteger(num) ? String(num) : num.toFixed(2).replace(/\.00$/, '');
+                    displays.push(display);
+                }
+
+                const maxIndex = values.indexOf(Math.max(...values));
+                displays.forEach((disp, i) => {
+                    const td = document.createElement('td');
+                    td.textContent = disp;
+                    if (i === maxIndex) td.classList.add('best-stat');
+                    row.appendChild(td);
+                });
+
+                tbody.appendChild(row);
+            });
 
             table.appendChild(thead);
             table.appendChild(tbody);
@@ -1630,7 +1696,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (comparePlayersButton) {
                 const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
                 const playerCount = selectedPlayers.length;
-                comparePlayersButton.disabled = playerCount < 2 || playerCount > 4;
+                comparePlayersButton.disabled = playerCount < 2;
             }
 
             tradeSimulator.classList.toggle('collapsed', state.isTradeCollapsed);
@@ -1932,6 +1998,17 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             if (playerComparisonModal) {
                 playerComparisonModal.classList.add('hidden');
             }
+        }
+
+        function showTooltip(target, message) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip-message';
+            tooltip.textContent = message;
+            document.body.appendChild(tooltip);
+            const rect = target.getBoundingClientRect();
+            tooltip.style.left = `${rect.left + rect.width / 2}px`;
+            tooltip.style.top = `${rect.top - 8}px`;
+            setTimeout(() => tooltip.remove(), 2000);
         }
 
         function setLoading(isLoading, message = 'Loading...') {

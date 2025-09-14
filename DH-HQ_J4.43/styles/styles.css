@@ -345,15 +345,28 @@
         }
 
         /* · · Row 3 · · */
-        .compare-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.25rem;
-        }
-        #positional-filters {
-            /* This will no longer grow, allowing the parent to center it */
-            justify-content: center;
-        }
+.compare-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+#player-comparison-modal .tooltip-message,
+.tooltip-message {
+    position: fixed;
+    background: rgba(0,0,0,0.8);
+    color: #fff;
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    transform: translate(-50%, -100%);
+    z-index: 10000;
+    pointer-events: none;
+    white-space: nowrap;
+}
+#positional-filters {
+    /* This will no longer grow, allowing the parent to center it */
+    justify-content: center;
+}
 
 /* ⬇︎  HIGH-END GLASS BUTTONS & SEGMENTED CONTROLS V3  ⬇︎ */
         .primary-switcher, .secondary-switcher, #positional-filters {
