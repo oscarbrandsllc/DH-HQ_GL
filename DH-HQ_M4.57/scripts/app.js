@@ -523,6 +523,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             state.tradeBlock = {};
             document.querySelectorAll('.player-selected').forEach(el => el.classList.remove('player-selected'));
             renderTradeBlock();
+            closeComparisonModal();
         }
 
 
@@ -1188,20 +1189,16 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 const headerContainer = document.createElement('div');
                 headerContainer.className = 'player-name-header-container';
 
-                const nameDiv = document.createElement('div');
-                nameDiv.className = 'player-name-header';
-                nameDiv.textContent = playerName;
+                headerContainer.innerHTML = `
+                    <div class="player-name-header">${playerName}<br><span class="game-log-link">Game Log</span></div>
+                `;
 
-                const gameLogLink = document.createElement('span');
-                gameLogLink.className = 'game-log-link';
-                gameLogLink.textContent = 'Game Log';
+                const gameLogLink = headerContainer.querySelector('.game-log-link');
                 gameLogLink.onclick = () => {
                     state.isGameLogModalOpenFromComparison = true;
                     handlePlayerNameClick(player);
                 };
 
-                headerContainer.appendChild(nameDiv);
-                headerContainer.appendChild(gameLogLink);
                 playerNamesRow.appendChild(headerContainer);
             });
             container.appendChild(playerNamesRow);
@@ -1214,10 +1211,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 summaryChipsContainer.className = 'summary-chips-container';
                 summaryChipsContainer.innerHTML = `
                     <div class="summary-chip">
-                        <h4>FPTS</h4>
+                        <h4>FPTS <span class="chip-separator">•</span> <span class="chip-header-value" style="color: ${getRankColor(player.overallRank)}">${player.total_pts}</span></h4>
                         <div class="chip-values">
-                            <span style="color: ${getRankColor(player.overallRank)}">${player.total_pts}</span>
-                            <span class="chip-separator">/</span>
                             <span style="color: ${getRankColor(player.overallRank)}">#${player.overallRank}</span>
                             <span class="chip-separator">/</span>
                             <span class="pos-rank-container">
@@ -1227,10 +1222,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                         </div>
                     </div>
                     <div class="summary-chip">
-                        <h4>PPG</h4>
+                        <h4>PPG <span class="chip-separator">•</span> <span class="chip-header-value" style="color: ${getRankColor(player.ppgOverallRank)}">${player.ppg}</span></h4>
                         <div class="chip-values">
-                            <span style="color: ${getRankColor(player.ppgOverallRank)}">${player.ppg}</span>
-                            <span class="chip-separator">/</span>
                             <span style="color: ${getRankColor(player.ppgOverallRank)}">#${player.ppgOverallRank}</span>
                             <span class="chip-separator">/</span>
                             <span class="pos-rank-container">
@@ -1436,7 +1429,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     'rec_fd': 'Receiving First Downs', 'rec_yar': 'Yards After Catch', 'fum': 'Fumbles Lost',
                 };
 
-                let listHtml = '<h4>Player Comparison Stats Key</h4><ul>';
+                let listHtml = '<h4>Player Comparison Stats Key<i class="fa-solid fa-square-xmark" id="close-comparison-key"></i></h4><ul>';
                 for (const key in statLabels) {
                     if (statDescriptions[key]) {
                         listHtml += `<li><strong>${statLabels[key]}:</strong> ${statDescriptions[key]}</li>`;
@@ -1449,6 +1442,12 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 if (keyBtn) {
                     keyBtn.addEventListener('click', () => {
                         keyContainer.classList.toggle('hidden');
+                    });
+                }
+                const closeBtn = keyContainer.querySelector('#close-comparison-key');
+                if (closeBtn) {
+                    closeBtn.addEventListener('click', () => {
+                        keyContainer.classList.add('hidden');
                     });
                 }
             }
