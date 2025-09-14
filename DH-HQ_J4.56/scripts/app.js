@@ -1058,6 +1058,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                     const td = document.createElement('td');
                     td.textContent = displayValue;
+                    const rankInfo = getWeeklyStatRank(weekStats.week, key, weekStats.stats, scoringSettings);
+                    if (rankInfo) td.style.color = rankInfo.color;
                     row.appendChild(td);
                 }
 
@@ -1086,6 +1088,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                             totals[key] = (totals[key] || 0) + statValue;
                         }
                     }
+                    totals['fpts'] = (totals['fpts'] || 0) + calculateFantasyPoints(weekStats.stats, scoringSettings);
                 });
 
                 for (const key of orderedStatKeys) {
@@ -1095,7 +1098,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                     let displayValue;
 
                     if (key === 'fpts') {
-                        const totalPoints = gameLogsWithData.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
+                        const totalPoints = totals['fpts'] || 0;
                         displayValue = totalPoints.toFixed(2).replace(/\.00$/, '');
                     } else if (key === 'ypc') {
                         const totalYards = totals['rush_yd'] || 0;
@@ -1126,9 +1129,59 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                         displayValue = Number.isInteger(totalValue) ? String(totalValue) : totalValue.toFixed(2).replace(/\.00$/, '');
                     }
                     td.textContent = displayValue;
+                    const rankInfo = getSeasonStatRank(key, 'total', player.id, scoringSettings);
+                    if (rankInfo) td.style.color = rankInfo.color;
                     footerRow.appendChild(td);
                 }
+
+                const avgRow = document.createElement('tr');
+                const avgTh = document.createElement('th');
+                avgTh.textContent = 'Avg';
+                avgRow.appendChild(avgTh);
+
+                for (const key of orderedStatKeys) {
+                    if (!statLabels[key]) continue;
+
+                    const td = document.createElement('td');
+                    let avgValue;
+
+                    if (key === 'fpts') {
+                        const totalPoints = totals['fpts'] || 0;
+                        avgValue = gameLogsWithData.length > 0 ? (totalPoints / gameLogsWithData.length) : 0;
+                        avgValue = avgValue.toFixed(2).replace(/\.00$/, '');
+                    } else if (key === 'ypc') {
+                        const totalYards = totals['rush_yd'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgYpc = totalCarries > 0 ? totalYards / totalCarries : 0;
+                        avgValue = avgYpc.toFixed(2);
+                    } else if (key === 'yco_per_car') {
+                        const totalYco = totals['rush_yac'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgYcoPerCar = totalCarries > 0 ? totalYco / totalCarries : 0;
+                        avgValue = avgYcoPerCar.toFixed(1);
+                    } else if (key === 'btkl_per_car') {
+                        const totalBtkl = totals['rush_btkl'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        const avgBtklPerCar = totalCarries > 0 ? totalBtkl / totalCarries : 0;
+                        avgValue = avgBtklPerCar.toFixed(2);
+                    } else if (key === 'pass_rtg') {
+                        const totalPassRtg = totals['pass_rtg'] || 0;
+                        const avgPassRtg = gameLogsWithData.length > 0 ? totalPassRtg / gameLogsWithData.length : 0;
+                        avgValue = avgPassRtg.toFixed(2).replace(/\.00$/, '');
+                    } else {
+                        const totalValue = totals[key] || 0;
+                        const avg = gameLogsWithData.length > 0 ? totalValue / gameLogsWithData.length : 0;
+                        avgValue = Number.isInteger(avg) ? String(avg) : avg.toFixed(2).replace(/\.00$/, '');
+                    }
+
+                    td.textContent = avgValue;
+                    const rankInfo = getSeasonStatRank(key, 'avg', player.id, scoringSettings);
+                    if (rankInfo) td.style.color = rankInfo.color;
+                    avgRow.appendChild(td);
+                }
+
                 tfoot.appendChild(footerRow);
+                tfoot.appendChild(avgRow);
                 table.appendChild(tfoot);
             }
 
@@ -2003,6 +2056,83 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                 }
             }
             return totalPoints;
+        }
+
+        function getStatValueForKey(key, stats, scoringSettings) {
+            if (key === 'fpts') return calculateFantasyPoints(stats, scoringSettings);
+            if (key === 'ypc') return (stats['rush_att'] || 0) > 0 ? ((stats['rush_yd'] || 0) / stats['rush_att']) : 0;
+            if (key === 'yco_per_car') return (stats['rush_att'] || 0) > 0 ? ((stats['rush_yac'] || 0) / stats['rush_att']) : 0;
+            if (key === 'btkl_per_car') return (stats['rush_att'] || 0) > 0 ? ((stats['rush_btkl'] || 0) / stats['rush_att']) : 0;
+            return stats[key] || 0;
+        }
+
+        function getTopRankColor(rank) {
+            if (rank <= 8) return '#76FFD4BB';
+            if (rank <= 16) return '#48BEFFDF';
+            if (rank <= 24) return '#957CFF';
+            if (rank <= 32) return '#FF6FE1';
+            if (rank <= 60) return '#FF2EB2CF';
+            return '#767693';
+        }
+
+        function getWeeklyStatRank(week, key, stats, scoringSettings) {
+            const weekData = state.weeklyStats[week];
+            if (!weekData) return null;
+            const playerValue = getStatValueForKey(key, stats, scoringSettings);
+            const values = [];
+            for (const pId in weekData) {
+                const val = getStatValueForKey(key, weekData[pId], scoringSettings);
+                values.push(val);
+            }
+            values.sort((a, b) => b - a);
+            const rank = values.findIndex(v => v <= playerValue + 1e-9) + 1;
+            return { rank, color: getTopRankColor(rank) };
+        }
+
+        function getSeasonStatRank(key, type, playerId, scoringSettings) {
+            const totals = {};
+            const counts = {};
+            const numerators = {};
+            const denominators = {};
+
+            for (const week in state.weeklyStats) {
+                const weeklyData = state.weeklyStats[week];
+                for (const pId in weeklyData) {
+                    const stats = weeklyData[pId];
+                    if (key === 'ypc' || key === 'yco_per_car' || key === 'btkl_per_car') {
+                        let numKey, denKey;
+                        if (key === 'ypc') { numKey = 'rush_yd'; denKey = 'rush_att'; }
+                        else if (key === 'yco_per_car') { numKey = 'rush_yac'; denKey = 'rush_att'; }
+                        else { numKey = 'rush_btkl'; denKey = 'rush_att'; }
+                        numerators[pId] = (numerators[pId] || 0) + (stats[numKey] || 0);
+                        denominators[pId] = (denominators[pId] || 0) + (stats[denKey] || 0);
+                    } else {
+                        const val = getStatValueForKey(key, stats, scoringSettings);
+                        totals[pId] = (totals[pId] || 0) + val;
+                        counts[pId] = (counts[pId] || 0) + 1;
+                    }
+                }
+            }
+
+            let playerValue;
+            let values;
+
+            if (key === 'ypc' || key === 'yco_per_car' || key === 'btkl_per_car') {
+                playerValue = (denominators[playerId] || 0) > 0 ? numerators[playerId] / denominators[playerId] : 0;
+                values = Object.keys(numerators).map(id => (denominators[id] || 0) > 0 ? numerators[id] / denominators[id] : 0);
+            } else {
+                if (type === 'avg') {
+                    playerValue = (counts[playerId] || 0) > 0 ? totals[playerId] / counts[playerId] : 0;
+                    values = Object.keys(totals).map(id => (counts[id] || 0) > 0 ? totals[id] / counts[id] : 0);
+                } else {
+                    playerValue = totals[playerId] || 0;
+                    values = Object.values(totals);
+                }
+            }
+
+            values.sort((a, b) => b - a);
+            const rank = values.findIndex(v => v <= playerValue + 1e-9) + 1;
+            return { rank, color: getTopRankColor(rank) };
         }
 
         function getRankColor(rank) {
