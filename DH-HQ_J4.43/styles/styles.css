@@ -2760,6 +2760,25 @@ font-weight: 500 !important;
     font-weight: 700;
 }
 
+#comparePlayersButton {
+    position: relative;
+}
+
+.compare-tooltip {
+    position: absolute;
+    top: -1.5rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--color-bg-light);
+    color: var(--color-text-primary);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 10;
+}
+
 #player-comparison-modal .summary-chip {
     padding: 0.27rem 0.6rem;
     text-align: center;

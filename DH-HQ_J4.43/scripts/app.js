@@ -1129,7 +1129,18 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
         }
 
         async function handlePlayerCompare(e) {
-            const selectedPlayers = Object.values(state.tradeBlock).flat().filter(asset => asset.pos !== 'DP');
+            const userTeamName = state.currentTeams?.find(team => team.isUserTeam)?.teamName;
+            const userPlayers = userTeamName ? (state.tradeBlock[userTeamName] || []) : [];
+            const otherPlayers = Object.entries(state.tradeBlock)
+                .filter(([team]) => team !== userTeamName)
+                .flatMap(([, assets]) => assets);
+            const selectedPlayers = [...userPlayers, ...otherPlayers].filter(asset => asset.pos !== 'DP');
+
+            if (selectedPlayers.length !== 2) {
+                showCompareTooltip();
+                return;
+            }
+
             const comparisonModalBody = document.getElementById('comparison-modal-body');
             comparisonModalBody.innerHTML = '<p class="text-center p-4">Loading player comparison...</p>';
             openComparisonModal();
@@ -1143,14 +1154,30 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             renderPlayerComparison(playerData);
         }
 
+        function showCompareTooltip() {
+            const btn = document.getElementById('comparePlayersButton');
+            if (!btn) return;
+            let tip = btn.querySelector('.compare-tooltip');
+            if (!tip) {
+                tip = document.createElement('div');
+                tip.className = 'compare-tooltip';
+                tip.textContent = 'Select exactly 2 players to compare';
+                btn.appendChild(tip);
+                setTimeout(() => tip.remove(), 2000);
+            }
+        }
+
         function renderPlayerComparison(players) {
             const comparisonModalBody = document.getElementById('comparison-modal-body');
-            comparisonModalBody.innerHTML = ''; // Clear existing content
+            comparisonModalBody.innerHTML = '';
+
+            const league = state.leagues.find(l => l.league_id === state.currentLeagueId);
+            if (!league) return;
+            const scoringSettings = league.scoring_settings;
 
             const container = document.createElement('div');
             container.className = 'player-comparison-container';
 
-            // Player Names Row
             const playerNamesRow = document.createElement('div');
             playerNamesRow.className = 'player-names-row';
             players.forEach(player => {
@@ -1163,7 +1190,6 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             container.appendChild(playerNamesRow);
 
-            // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
             players.forEach(player => {
@@ -1204,13 +1230,11 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             container.appendChild(summaryChipsRow);
 
-            // Detailed Stats Table
             const table = document.createElement('table');
             table.className = 'player-comparison-table';
             const thead = document.createElement('thead');
             const tbody = document.createElement('tbody');
 
-            // Table Header
             const tr = document.createElement('tr');
             tr.innerHTML = '<th>STAT</th>';
             players.forEach(player => {
@@ -1222,56 +1246,95 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             });
             thead.appendChild(tr);
 
-            // Table Body
             const statLabels = {
-                'fpts': 'FPTS', 'pass_att': 'paATT', 'pass_cmp': 'COMP', 'pass_yd': 'paYDS', 'pass_td': 'paTD', 'pass_fd': 'pa1D', 'pass_rtg': 'paRTG',
-                'rush_att': 'CAR', 'rush_yd': 'ruYDS', 'ypc': 'YPC', 'rush_td': 'ruTD', 'rush_fd': 'ru1D', 'rush_btkl': 'BTKL', 'rush_yac': 'YCO',
-                'yco_per_car': 'YCO/CAR', 'btkl_per_car': 'BTKL/CAR', 'rec_tgt': 'TGT', 'rec': 'REC', 'rec_yd': 'recYDS', 'rec_td': 'recTD',
-                'rec_fd': 'rec1D', 'rec_yar': 'YAC', 'fum_lost': 'FUM',
+                'fpts': 'FPTS',
+                'pass_att': 'paATT',
+                'pass_cmp': 'COMP',
+                'pass_yd': 'paYDS',
+                'pass_td': 'paTD',
+                'pass_fd': 'pa1D',
+                'pass_rtg': 'paRTG',
+                'pass_int': 'INT',
+                'pass_sack': 'SACK',
+                'rush_att': 'CAR',
+                'rush_yd': 'ruYDS',
+                'ypc': 'YPC',
+                'rush_td': 'ruTD',
+                'rush_fd': 'ru1D',
+                'rush_btkl': 'BTKL',
+                'rush_yac': 'YCO',
+                'yco_per_car': 'YCO/CAR',
+                'btkl_per_car': 'BTKL/CAR',
+                'rec_tgt': 'TGT',
+                'rec': 'REC',
+                'rec_yd': 'recYDS',
+                'rec_td': 'recTD',
+                'rec_fd': 'rec1D',
+                'rec_yar': 'YAC',
+                'fum': 'FUM',
             };
-            const allStatKeys = [...new Set(players.flatMap(p => p.gameLogs.flatMap(gl => Object.keys(gl.stats).concat('fpts', 'ypc'))))];
 
-            for (const statKey of allStatKeys) {
-                if (statLabels[statKey]) {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `<td>${statLabels[statKey]}</td>`;
+            const qbStatOrder = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'pass_int', 'pass_sack', 'rush_yd', 'rush_td', 'rush_att', 'ypc', 'fum'];
+            const rbStatOrder = ['fpts', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rush_yac', 'yco_per_car', 'btkl_per_car', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'fum'];
+            const wrTeStatOrder = ['fpts', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'rec_yar', 'rush_att', 'rush_yd', 'rush_td', 'ypc', 'fum'];
+            const defaultOrder = ['fpts', 'pass_att', 'pass_cmp', 'pass_yd', 'pass_td', 'pass_fd', 'pass_rtg', 'rush_att', 'rush_yd', 'ypc', 'rush_td', 'rush_fd', 'rush_btkl', 'rec_tgt', 'rec', 'rec_yd', 'rec_td', 'rec_fd', 'fum'];
 
-                    let maxVal = -Infinity;
-                    let maxIndex = -1;
-                    const values = [];
+            const getOrder = pos => {
+                if (pos === 'QB') return qbStatOrder;
+                if (pos === 'RB') return rbStatOrder;
+                if (pos === 'WR' || pos === 'TE') return wrTeStatOrder;
+                return defaultOrder;
+            };
 
-                    for (let i = 0; i < players.length; i++) {
-                        const player = players[i];
-                        const total = player.gameLogs.reduce((sum, week) => {
-                            let value = 0;
-                            if (statKey === 'fpts') {
-                                value = calculateFantasyPoints(week.stats, state.leagues.find(l => l.league_id === state.currentLeagueId).scoring_settings);
-                            } else if (statKey === 'ypc') {
-                                value = (week.stats['rush_att'] || 0) > 0 ? ((week.stats['rush_yd'] || 0) / week.stats['rush_att']) : 0;
-                            } else {
-                                value = week.stats[statKey] || 0;
-                            }
-                            return sum + value;
-                        }, 0);
+            const userOrder = getOrder(players[0].pos);
+            const otherOrder = players[1] ? getOrder(players[1].pos) : [];
+            const orderedStatKeys = [...userOrder, ...otherOrder.filter(k => !userOrder.includes(k))];
 
-                        values.push(total);
-                        if (total > maxVal) {
-                            maxVal = total;
-                            maxIndex = i;
+            const playerTotals = players.map(player => {
+                const totals = {};
+                let games = 0;
+                player.gameLogs.forEach(week => {
+                    const stats = week.stats || {};
+                    if (Object.keys(stats).length > 0) games++;
+                    for (const key in stats) {
+                        const val = parseFloat(stats[key]);
+                        if (!isNaN(val)) {
+                            totals[key] = (totals[key] || 0) + val;
                         }
                     }
+                    totals['fpts'] = (totals['fpts'] || 0) + calculateFantasyPoints(stats, scoringSettings);
+                });
+                totals['games'] = games;
+                totals['ypc'] = (totals['rush_att'] || 0) > 0 ? (totals['rush_yd'] || 0) / totals['rush_att'] : 0;
+                totals['yco_per_car'] = (totals['rush_att'] || 0) > 0 ? (totals['rush_yac'] || 0) / totals['rush_att'] : 0;
+                totals['btkl_per_car'] = (totals['rush_att'] || 0) > 0 ? (totals['rush_btkl'] || 0) / totals['rush_att'] : 0;
+                totals['pass_rtg'] = games > 0 ? (totals['pass_rtg'] || 0) / games : 0;
+                totals['fum'] = totals['fum'] || totals['fum_lost'] || 0;
+                return totals;
+            });
 
-                    values.forEach((val, i) => {
-                        const td = document.createElement('td');
-                        td.textContent = val.toFixed(2).replace(/\.00$/, '');
-                        if (i === maxIndex) {
-                            td.classList.add('best-stat');
-                        }
-                        row.appendChild(td);
-                    });
+            for (const statKey of orderedStatKeys) {
+                if (!statLabels[statKey]) continue;
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${statLabels[statKey]}</td>`;
 
-                    tbody.appendChild(row);
-                }
+                const values = playerTotals.map(totals => totals[statKey] || 0);
+                const maxVal = Math.max(...values);
+
+                values.forEach((val, i) => {
+                    const td = document.createElement('td');
+                    let displayVal;
+                    if (statKey === 'yco_per_car') displayVal = val.toFixed(1);
+                    else if (['ypc', 'btkl_per_car', 'pass_rtg'].includes(statKey)) displayVal = val.toFixed(2).replace(/\.00$/, '');
+                    else displayVal = Number.isInteger(val) ? String(val) : val.toFixed(2).replace(/\.00$/, '');
+                    td.textContent = displayVal;
+                    if (val === maxVal && values.filter(v => v === maxVal).length === 1) {
+                        td.classList.add('best-stat');
+                    }
+                    row.appendChild(td);
+                });
+
+                tbody.appendChild(row);
             }
 
             table.appendChild(thead);
@@ -1284,6 +1347,7 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             container.appendChild(tableContainer);
             comparisonModalBody.appendChild(container);
         }
+
 
         function populateLeagueSelect(leagues) {
             leagueSelect.innerHTML = '<option>Select a league...</option>';
