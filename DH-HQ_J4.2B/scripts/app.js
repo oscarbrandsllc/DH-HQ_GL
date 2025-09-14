@@ -1038,12 +1038,13 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
             // Summary Chips Row
             const summaryChipsRow = document.createElement('div');
             summaryChipsRow.className = 'comparison-summary-chips-row';
-            summaryChipsRow.style.gridTemplateColumns = `100px repeat(${players.length}, 1fr)`;
-            summaryChipsRow.appendChild(document.createElement('div')); // Empty cell for alignment
             players.forEach(player => {
                 const summaryChipsContainer = document.createElement('div');
                 summaryChipsContainer.className = 'summary-chips-container';
+                const fullPlayer = state.players[player.id];
+                const playerName = fullPlayer ? `${fullPlayer.first_name} ${fullPlayer.last_name}` : player.label;
                 summaryChipsContainer.innerHTML = `
+                    <h4 class="player-name">${playerName}</h4>
                     <div class="summary-chip">
                         <h4>FPTS / PPG</h4>
                         <div class="chip-values">
