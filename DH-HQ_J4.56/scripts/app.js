@@ -1058,6 +1058,8 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                     const td = document.createElement('td');
                     td.textContent = displayValue;
+                    const rank = getWeeklyStatRank(weekStats.week, key, player.id, value, scoringSettings);
+                    td.style.color = getGameLogStatColor(rank);
                     row.appendChild(td);
                 }
 
@@ -1093,24 +1095,29 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
                     const td = document.createElement('td');
                     let displayValue;
+                    let rankValue;
 
                     if (key === 'fpts') {
                         const totalPoints = gameLogsWithData.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
+                        rankValue = totalPoints;
                         displayValue = totalPoints.toFixed(2).replace(/\.00$/, '');
                     } else if (key === 'ypc') {
                         const totalYards = totals['rush_yd'] || 0;
                         const totalCarries = totals['rush_att'] || 0;
                         const avgYpc = totalCarries > 0 ? totalYards / totalCarries : 0;
+                        rankValue = avgYpc;
                         displayValue = avgYpc.toFixed(2);
                     } else if (key === 'yco_per_car') {
                         const totalYco = totals['rush_yac'] || 0;
                         const totalCarries = totals['rush_att'] || 0;
                         const avgYcoPerCar = totalCarries > 0 ? totalYco / totalCarries : 0;
+                        rankValue = avgYcoPerCar;
                         displayValue = avgYcoPerCar.toFixed(1);
                     } else if (key === 'btkl_per_car') {
                         const totalBtkl = totals['rush_btkl'] || 0;
                         const totalCarries = totals['rush_att'] || 0;
                         const avgBtklPerCar = totalCarries > 0 ? totalBtkl / totalCarries : 0;
+                        rankValue = avgBtklPerCar;
                         displayValue = avgBtklPerCar.toFixed(2);
                     } else if (key === 'pass_rtg') {
                      // Note: Averaging weekly passer ratings is not statistically perfect.
@@ -1120,15 +1127,63 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
                      // Therefore, we use the available weekly rating and average it.
                          const totalPassRtg = totals['pass_rtg'] || 0;
                          const avgPassRtg = gameLogsWithData.length > 0 ? totalPassRtg / gameLogsWithData.length : 0;
+                         rankValue = avgPassRtg;
                          displayValue = avgPassRtg.toFixed(2).replace(/\.00$/, '');
                     } else {
                         const totalValue = totals[key] || 0;
+                        rankValue = totalValue;
                         displayValue = Number.isInteger(totalValue) ? String(totalValue) : totalValue.toFixed(2).replace(/\.00$/, '');
                     }
+                    const rank = getSeasonStatRank(player.id, key, rankValue, scoringSettings, 'total');
+                    td.style.color = getGameLogStatColor(rank);
                     td.textContent = displayValue;
                     footerRow.appendChild(td);
                 }
                 tfoot.appendChild(footerRow);
+
+                const avgRow = document.createElement('tr');
+                const avgTh = document.createElement('th');
+                avgTh.textContent = 'AVG';
+                avgRow.appendChild(avgTh);
+
+                for (const key of orderedStatKeys) {
+                    if (!statLabels[key]) continue;
+                    const td = document.createElement('td');
+                    let avgValue;
+                    if (key === 'fpts') {
+                        const totalPoints = gameLogsWithData.reduce((sum, week) => sum + calculateFantasyPoints(week.stats, scoringSettings), 0);
+                        avgValue = gameLogsWithData.length > 0 ? totalPoints / gameLogsWithData.length : 0;
+                        td.textContent = avgValue.toFixed(2).replace(/\.00$/, '');
+                    } else if (key === 'ypc') {
+                        const totalYards = totals['rush_yd'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        avgValue = totalCarries > 0 ? totalYards / totalCarries : 0;
+                        td.textContent = avgValue.toFixed(2);
+                    } else if (key === 'yco_per_car') {
+                        const totalYco = totals['rush_yac'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        avgValue = totalCarries > 0 ? totalYco / totalCarries : 0;
+                        td.textContent = avgValue.toFixed(1);
+                    } else if (key === 'btkl_per_car') {
+                        const totalBtkl = totals['rush_btkl'] || 0;
+                        const totalCarries = totals['rush_att'] || 0;
+                        avgValue = totalCarries > 0 ? totalBtkl / totalCarries : 0;
+                        td.textContent = avgValue.toFixed(2);
+                    } else if (key === 'pass_rtg') {
+                        const totalPassRtg = totals['pass_rtg'] || 0;
+                        avgValue = gameLogsWithData.length > 0 ? totalPassRtg / gameLogsWithData.length : 0;
+                        td.textContent = avgValue.toFixed(2).replace(/\.00$/, '');
+                    } else {
+                        const totalValue = totals[key] || 0;
+                        avgValue = gameLogsWithData.length > 0 ? totalValue / gameLogsWithData.length : 0;
+                        td.textContent = Number.isInteger(avgValue) ? String(avgValue) : avgValue.toFixed(2).replace(/\.00$/, '');
+                    }
+                    const rank = getSeasonStatRank(player.id, key, avgValue, scoringSettings, 'avg');
+                    td.style.color = getGameLogStatColor(rank);
+                    avgRow.appendChild(td);
+                }
+
+                tfoot.appendChild(avgRow);
                 table.appendChild(tfoot);
             }
 
@@ -2028,6 +2083,88 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
             return 'var(--color-text-secondary)';
         }
+
+        function getGameLogStatColor(rank) {
+            if (typeof rank !== 'number') return 'var(--color-text-primary)';
+            if (rank <= 8) return '#76FFD4BB';
+            if (rank <= 16) return '#48BEFFDF';
+            if (rank <= 24) return '#957CFF';
+            if (rank <= 32) return '#FF6FE1';
+            if (rank <= 60) return '#FF2EB2CF';
+            return '#767693';
+        }
+
+        function getStatValue(stats, key, scoringSettings) {
+            if (!stats) return 0;
+            if (key === 'fpts') return calculateFantasyPoints(stats, scoringSettings);
+            if (key === 'ypc') return (stats['rush_att'] || 0) > 0 ? (stats['rush_yd'] || 0) / stats['rush_att'] : 0;
+            if (key === 'yco_per_car') return (stats['rush_att'] || 0) > 0 ? (stats['rush_yac'] || 0) / stats['rush_att'] : 0;
+            if (key === 'btkl_per_car') return (stats['rush_att'] || 0) > 0 ? (stats['rush_btkl'] || 0) / stats['rush_att'] : 0;
+            return stats[key] || 0;
+        }
+
+        function getWeeklyStatRank(week, key, playerId, playerValue, scoringSettings) {
+            const weeklyData = state.weeklyStats[week] || {};
+            let rank = 1;
+            for (const pid in weeklyData) {
+                if (pid === String(playerId)) continue;
+                const val = getStatValue(weeklyData[pid], key, scoringSettings);
+                if (val > playerValue) rank++;
+            }
+            return rank;
+        }
+
+        function calculateSeasonStatValue(playerId, key, scoringSettings, type) {
+            let total = 0;
+            let games = 0;
+            let rushYds = 0, rushAtt = 0, rushYac = 0, rushBtkl = 0;
+            for (const week in state.weeklyStats) {
+                const stats = state.weeklyStats[week][playerId];
+                if (!stats) continue;
+                games++;
+                if (key === 'ypc') {
+                    rushYds += stats['rush_yd'] || 0;
+                    rushAtt += stats['rush_att'] || 0;
+                } else if (key === 'yco_per_car') {
+                    rushYac += stats['rush_yac'] || 0;
+                    rushAtt += stats['rush_att'] || 0;
+                } else if (key === 'btkl_per_car') {
+                    rushBtkl += stats['rush_btkl'] || 0;
+                    rushAtt += stats['rush_att'] || 0;
+                } else if (key === 'fpts') {
+                    total += calculateFantasyPoints(stats, scoringSettings);
+                } else {
+                    total += stats[key] || 0;
+                }
+            }
+
+            let result;
+            if (key === 'ypc') {
+                result = rushAtt > 0 ? rushYds / rushAtt : 0;
+            } else if (key === 'yco_per_car') {
+                result = rushAtt > 0 ? rushYac / rushAtt : 0;
+            } else if (key === 'btkl_per_car') {
+                result = rushAtt > 0 ? rushBtkl / rushAtt : 0;
+            } else if (key === 'pass_rtg') {
+                result = games > 0 ? total / games : 0;
+            } else if (type === 'avg') {
+                result = games > 0 ? total / games : 0;
+            } else {
+                result = total;
+            }
+            return result;
+        }
+
+        function getSeasonStatRank(playerId, key, playerValue, scoringSettings, type) {
+            let rank = 1;
+            for (const pid in state.players) {
+                if (pid === String(playerId)) continue;
+                const val = calculateSeasonStatValue(pid, key, scoringSettings, type);
+                if (val > playerValue) rank++;
+            }
+            return rank;
+        }
+
         function getGameLogPosRankColor(pos, rank) {
             if (typeof rank !== 'number') return 'var(--color-text-primary)';
 
