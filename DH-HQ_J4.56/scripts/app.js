@@ -2129,12 +2129,34 @@ function showLegend(){ try{ document.getElementById('legend-section')?.classList
 
         function openComparisonModal() {
             if (playerComparisonModal) {
+                const modalContent = playerComparisonModal.querySelector('.modal-content');
+                const header = document.getElementById('header-container');
+                const tradePreview = document.getElementById('tradeSimulator');
+
+                if (modalContent && header && tradePreview) {
+                    const headerRect = header.getBoundingClientRect();
+                    const tradePreviewRect = tradePreview.getBoundingClientRect();
+
+                    const topPosition = headerRect.bottom + 10;
+                    const availableHeight = tradePreviewRect.top - topPosition - 10;
+
+                    modalContent.style.top = `${topPosition}px`;
+                    modalContent.style.height = `${availableHeight}px`;
+                    modalContent.style.bottom = 'auto';
+                }
+
                 playerComparisonModal.classList.remove('hidden');
             }
         }
 
         function closeComparisonModal() {
             if (playerComparisonModal) {
+                const modalContent = playerComparisonModal.querySelector('.modal-content');
+                if (modalContent) {
+                    modalContent.style.top = '';
+                    modalContent.style.height = '';
+                    modalContent.style.bottom = '';
+                }
                 playerComparisonModal.classList.add('hidden');
             }
         }
